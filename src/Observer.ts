@@ -1,4 +1,3 @@
-/// <reference path="./utils.ts" />
 namespace vm {
 
     //创建数组的函数代理
@@ -87,8 +86,8 @@ namespace vm {
             get: function reactiveGetter() {
                 const value = getter ? getter.call(obj) : val
 
-                //进行依赖收集，依赖收集前 Dep.target 会被赋值，收集完成后会置空。
-                if (Dep.target) {
+                //进行依赖收集，依赖收集前 Dependency.collectTarget 会被赋值，收集完成后会置空。
+                if (Dependency.collectTarget) {
                     dep.depend()//自身的依赖
                     if (valOb) {
                         valOb.dep.depend()//属性值依赖
