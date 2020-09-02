@@ -1,6 +1,11 @@
 namespace vm {
     export class Watcher {
 
+        /**
+         * 宿主
+         */
+        host: Host;
+
         id: number;
 
         /**
@@ -9,19 +14,9 @@ namespace vm {
         cb: Function;
 
         /**
-         * 延迟到下一帧刷新
-         */
-        lazy: boolean;
-
-        /**
          * 立即执行
          */
         sync: boolean;
-
-        /**
-         * 当前是否为脏数据
-         */
-        dirty: boolean;
 
         /**
          * 控制watch的开关
@@ -32,13 +27,13 @@ namespace vm {
          * 当前收集的依赖，用于与新的依赖差异对比
          */
         deps: Array<Dependency>;
-        depIds: { [key: string]: boolean };
+        depIds: IIdMap;
 
         /**
          * 本轮收集的依赖，在作为当前依赖前，需要用于差异对比
          */
         newDeps: Array<Dependency>;
-        newDepIds: { [key: string]: boolean };
+        newDepIds: IIdMap;
 
         /**
          * 最终要执行的get函数
@@ -51,25 +46,25 @@ namespace vm {
         value: any;
 
         constructor(
+            host: Host,
             expOrFn: string | Function,
             cb: Function,
-            options?: { lazy?: boolean, sync?: boolean }
+            options?: { sync?: boolean }
         ) {
+            this.host = host;
             // options
             if (options) {
-                this.lazy = !!options.lazy
                 this.sync = !!options.sync
             } else {
-                this.lazy = this.sync = false
+                this.sync = false
             }
             this.cb = cb
             this.id = ++uid
             this.active = true
-            this.dirty = this.lazy
             this.deps = []
             this.newDeps = []
-            this.depIds = Object.create(null)
-            this.newDepIds = Object.create(null)
+            this.depIds = new IdMap();
+            this.newDepIds = new IdMap();
 
             if (typeof expOrFn === 'function') {
                 this.getter = expOrFn as any
@@ -82,9 +77,7 @@ namespace vm {
                     )
                 }
             }
-            this.value = this.lazy
-                ? undefined
-                : this.get()
+            this.value = this.get()
         }
 
         /**
@@ -95,7 +88,7 @@ namespace vm {
             Dependency.pushCollectTarget(this)
 
             let value
-            value = this.getter.call(vm, vm)
+            value = this.getter.call(this.host, this.host)
 
             /*结束收集*/
             Dependency.popCollectTarget()
@@ -110,12 +103,12 @@ namespace vm {
          */
         addDep(dep: Dependency) {
             const id = dep.id
-            if (!this.newDepIds[id]) {
-                this.newDepIds[id] = true
+            if (!this.newDepIds.has(id)) {
+                this.newDepIds.add(id)
                 this.newDeps.push(dep)
 
                 //向dep添加自己，实现双向访问，depIds用作重复添加的缓存
-                if (!this.depIds[id]) {
+                if (!this.depIds.has(id)) {
                     dep.add(this)
                 }
             }
@@ -129,14 +122,14 @@ namespace vm {
             let i = this.deps.length
             while (i--) {
                 const dep = this.deps[i]
-                if (!this.newDepIds[dep.id]) {
+                if (!this.newDepIds.has(dep.id)) {
                     dep.remove(this)
                 }
             }
 
             //让new作为当前记录的依赖，并清空旧的
             this.depIds = this.newDepIds
-            this.newDepIds = Object.create(null)
+            this.newDepIds.clear();
 
             let tmp = this.deps
             this.deps = this.newDeps
@@ -148,16 +141,12 @@ namespace vm {
          * 当依赖发生变化就会被执行
          */
         update() {
-            /* istanbul ignore else */
-            if (this.lazy) {
-                this.dirty = true
-            } else if (this.sync) {
-                /*同步则执行run直接渲染视图*/
-                // 基本不会用到sync
+            if (this.sync) {
+                //立即渲染
                 this.run()
             } else {
-                /*异步推送到观察者队列中，由调度者调用。*/
-                queueWatcher(this)
+                //下一帧渲染，可以降低重复渲染的概率
+                Tick.add(this);
             }
         }
 
@@ -178,14 +167,6 @@ namespace vm {
         }
 
         /**
-         * 获取观察者的值，只可以在 lazy 的时候调用
-         */
-        evaluate() {
-            this.value = this.get()
-            this.dirty = false
-        }
-
-        /**
          * 收集该watcher的所有deps依赖
          */
         depend() {
@@ -200,6 +181,7 @@ namespace vm {
          */
         teardown() {
             if (this.active) {
+                remove(this.host._watcherList, this);
                 let i = this.deps.length
                 while (i--) {
                     this.deps[i].remove(this)
