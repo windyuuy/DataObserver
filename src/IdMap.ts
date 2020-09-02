@@ -1,3 +1,4 @@
+/// <reference path="./utils.ts" />
 namespace vm {
     export interface IIdMap {
         add(value: number): this;

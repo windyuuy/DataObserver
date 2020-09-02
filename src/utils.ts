@@ -40,7 +40,7 @@ namespace vm {
      * 讲使用.分隔的路径访问转换为函数。
      * @param path 
      */
-    export function parsePath(path: string) {
+    export function parsePath(path: string): ((obj: any) => any) | undefined {
         if (bailRE.test(path)) {
             return
         }

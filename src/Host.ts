@@ -54,7 +54,7 @@ namespace vm {
      * 向普通对象注入Host相关方法
      */
     export function implementHost(obj: any): IHost {
-        if ("$watcherList" in obj) {
+        if (hasOwn(obj, "$watcherList")) {
             return obj;
         }
         def(obj, "$watcherList", []);
