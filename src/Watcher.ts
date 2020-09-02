@@ -161,7 +161,7 @@ namespace vm {
                     const oldValue = this.value
                     this.value = value
                     /*触发回调渲染视图*/
-                    this.cb.call(value, oldValue)
+                    this.cb.call(this.host, value, oldValue)
                 }
             }
         }

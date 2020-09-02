@@ -77,8 +77,9 @@ var vm;
 (function (vm) {
     class Host {
         constructor() {
-            this.$watcherList = [];
-            this.$isDestroyed = false;
+            //防止产生枚举
+            vm.def(this, "$watcherList", []);
+            vm.def(this, "$isDestroyed", false);
         }
         $watch(expOrFn, cb) {
             if (this.$isDestroyed) {
@@ -284,7 +285,7 @@ var vm;
                 const value = getter ? getter.call(obj) : val;
                 //进行依赖收集，依赖收集前 Dependency.collectTarget 会被赋值，收集完成后会置空。
                 if (vm.Dependency.collectTarget) {
-                    dep.depend(); //自身的依赖
+                    dep.depend(); //将自身加入到Dependency.collectTarget中
                     if (valOb) {
                         valOb.dep.depend(); //属性值依赖
                     }
@@ -475,7 +476,7 @@ var vm;
                     const oldValue = this.value;
                     this.value = value;
                     /*触发回调渲染视图*/
-                    this.cb.call(value, oldValue);
+                    this.cb.call(this.host, value, oldValue);
                 }
             }
         }

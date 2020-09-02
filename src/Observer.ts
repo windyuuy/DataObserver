@@ -46,7 +46,7 @@ namespace vm {
         if (!isObject(value)) {
             return;
         }
-        let ob: Observer | void
+        let ob: Observer | undefined
         if (value.__ob__ instanceof Observer) {
             //对象已经绑定
             ob = value.__ob__;
@@ -88,7 +88,7 @@ namespace vm {
 
                 //进行依赖收集，依赖收集前 Dependency.collectTarget 会被赋值，收集完成后会置空。
                 if (Dependency.collectTarget) {
-                    dep.depend()//自身的依赖
+                    dep.depend()//将自身加入到Dependency.collectTarget中
                     if (valOb) {
                         valOb.dep.depend()//属性值依赖
                     }

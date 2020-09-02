@@ -59,6 +59,7 @@ declare namespace vm {
     class Host implements IHost {
         $watcherList: Watcher[];
         $isDestroyed: boolean;
+        constructor();
         $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void): Watcher | undefined;
         $destroy(): void;
     }
@@ -92,7 +93,7 @@ declare namespace vm {
     /**
      * 将对象处理为可观察对象
      */
-    function observe(value: any): void | Observer;
+    function observe(value: any): Observer | undefined;
     /**
      * 拦截对象所有的key和value
      */

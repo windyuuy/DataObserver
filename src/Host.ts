@@ -26,8 +26,14 @@ namespace vm {
 
     export class Host implements IHost {
 
-        $watcherList: Watcher[] = [];
-        $isDestroyed: boolean = false;
+        $watcherList!: Watcher[];
+        $isDestroyed!: boolean;
+
+        constructor() {
+            //防止产生枚举
+            def(this, "$watcherList", []);
+            def(this, "$isDestroyed", false);
+        }
 
         $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void) {
             if (this.$isDestroyed) {
