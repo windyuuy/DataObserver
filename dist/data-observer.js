@@ -77,10 +77,42 @@ var vm;
 (function (vm) {
     class Host {
         constructor() {
-            this._watcherList = [];
+            this.$watcherList = [];
+            this.$isDestroyed = false;
+        }
+        $watch(expOrFn, cb) {
+            if (this.$isDestroyed) {
+                console.error("the host is destroyed", this);
+                return;
+            }
+            let watcher = new vm.Watcher(this, expOrFn, cb);
+            this.$watcherList.push(watcher);
+            return watcher;
+        }
+        $destroy() {
+            var temp = this.$watcherList;
+            this.$watcherList = [];
+            for (let w of temp) {
+                w.teardown();
+            }
+            this.$isDestroyed = true;
         }
     }
     vm.Host = Host;
+    /**
+     * 向普通对象注入Host相关方法
+     */
+    function implementHost(obj) {
+        if ("$watcherList" in obj) {
+            return obj;
+        }
+        vm.def(obj, "$watcherList", []);
+        vm.def(obj, "$isDestroyed", false);
+        vm.def(obj, "$watch", Host.prototype.$watch);
+        vm.def(obj, "$destroy", Host.prototype.$destroy);
+        return obj;
+    }
+    vm.implementHost = implementHost;
 })(vm || (vm = {}));
 var vm;
 (function (vm) {
@@ -399,7 +431,7 @@ var vm;
          */
         teardown() {
             if (this.active) {
-                vm.remove(this.host._watcherList, this);
+                vm.remove(this.host.$watcherList, this);
                 let i = this.deps.length;
                 while (i--) {
                     this.deps[i].remove(this);

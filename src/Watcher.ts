@@ -4,7 +4,7 @@ namespace vm {
         /**
          * 宿主
          */
-        host: Host;
+        host: IHost;
 
         id: number;
 
@@ -46,7 +46,7 @@ namespace vm {
         value: any;
 
         constructor(
-            host: Host,
+            host: IHost,
             expOrFn: string | Function,
             cb: Function,
             options?: { sync?: boolean }
@@ -181,7 +181,7 @@ namespace vm {
          */
         teardown() {
             if (this.active) {
-                remove(this.host._watcherList, this);
+                remove(this.host.$watcherList, this);
                 let i = this.deps.length
                 while (i--) {
                     this.deps[i].remove(this)
