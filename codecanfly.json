@@ -1,8 +1,15 @@
 {
 	"name": "dataobserver",
-	"version": "0.0.1",
-	"files": [],
-	"tags": [],
+	"version": "1.0.0",
+	"files": [
+		"data-observer.js",
+		"data-observer.d.ts"
+	],
+	"fileRoot": "dist",
+	"tags": [
+		"vue",
+		"绑定"
+	],
 	"commands": [],
 	"uses": []
 }
