@@ -111,6 +111,7 @@ var vm;
         vm.def(obj, "$isDestroyed", false);
         vm.def(obj, "$watch", Host.prototype.$watch);
         vm.def(obj, "$destroy", Host.prototype.$destroy);
+        vm.observe(obj);
         return obj;
     }
     vm.implementHost = implementHost;
@@ -169,6 +170,39 @@ var vm;
         ob.dep.notify();
     }
     vm.del = del;
+    /**
+     * 注解，标注当前侦听的变量或表达式
+     * @param expOrFn 路径或取值函数
+     */
+    function watch(expOrFn) {
+        return function (target, propertyKey, descriptor) {
+            if (!vm.hasOwn(target, "$watchAnnotations")) {
+                target["$watchAnnotations"] = [];
+            }
+            var list = target["$watchAnnotations"];
+            var cb = target[propertyKey];
+            list.push({ expOrFn, cb });
+        };
+    }
+    vm.watch = watch;
+    /**
+     * 注解，标注当前需要访问的类
+     */
+    function host(constructor) {
+        return class extends constructor {
+            constructor() {
+                super();
+                vm.observe(this);
+                var list = this.__proto__["$watchAnnotations"];
+                if (list != null) {
+                    for (let w of list) {
+                        this.$watch(w.expOrFn, w.cb.bind(this));
+                    }
+                }
+            }
+        };
+    }
+    vm.host = host;
 })(vm || (vm = {}));
 var vm;
 (function (vm) {
@@ -237,7 +271,7 @@ var vm;
     }
     vm.remove = remove;
     const unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD/;
-    const bailRE = new RegExp(("[^" + (unicodeRegExp.source) + ".$_\\d]"));
+    const bailRE = new RegExp("[^" + (unicodeRegExp.source) + ".$_\\d]");
     /**
      * 讲使用.分隔的路径访问转换为函数。
      * @param path

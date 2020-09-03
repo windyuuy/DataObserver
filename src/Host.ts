@@ -67,6 +67,8 @@ namespace vm {
         def(obj, "$isDestroyed", false);
         def(obj, "$watch", Host.prototype.$watch);
         def(obj, "$destroy", Host.prototype.$destroy);
+
+        observe(obj);
         return obj as any;
     }
 
@@ -124,4 +126,50 @@ namespace vm {
         }
         ob.dep.notify();
     }
+
+    /**
+     * 注解，标注当前侦听的变量或表达式
+     * @param expOrFn 路径或取值函数
+     */
+    export function watch(expOrFn: string | Function) {
+        return function (target: Host, propertyKey: string, descriptor: PropertyDescriptor) {
+            if (!hasOwn(target, "$watchAnnotations")) {
+                (target as any)["$watchAnnotations"] = [];
+            }
+            var list = (target as any)["$watchAnnotations"] as {
+                expOrFn: string | Function,
+                cb: (oldValue: any, newValue: any) => void
+            }[]
+            var cb = (target as any)[propertyKey] as (oldValue: any, newValue: any) => void
+
+            list.push({ expOrFn, cb });
+        }
+    }
+
+    /**
+     * 注解，标注当前需要访问的类
+     */
+    export function host(constructor: new () => Host): any {
+        return class extends constructor {
+            constructor() {
+                super()
+
+                observe(this);
+
+                var list = (this as any).__proto__["$watchAnnotations"] as {
+                    expOrFn: string | Function,
+                    cb: (oldValue: any, newValue: any) => void
+                }[]
+
+                if (list != null) {
+                    for (let w of list) {
+                        this.$watch(w.expOrFn, w.cb.bind(this));
+                    }
+                }
+
+
+            }
+        }
+    }
+
 }

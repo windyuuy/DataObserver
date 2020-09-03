@@ -80,6 +80,15 @@ declare namespace vm {
      * @param key
      */
     function del(target: any, key: string | number): void;
+    /**
+     * 注解，标注当前侦听的变量或表达式
+     * @param expOrFn 路径或取值函数
+     */
+    function watch(expOrFn: string | Function): (target: Host, propertyKey: string, descriptor: PropertyDescriptor) => void;
+    /**
+     * 注解，标注当前需要访问的类
+     */
+    function host(constructor: new () => Host): any;
 }
 declare namespace vm {
     function isObject(obj: any): boolean;

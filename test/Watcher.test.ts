@@ -163,3 +163,55 @@ test("深层数组", () => {
 
 
 })
+
+test("watch注解", () => {
+
+    var view = {
+        testString: "",
+        testNum: 0,
+        newValue: ""
+    }
+
+    @vm.host
+    class TestHost extends vm.Host {
+        a = {
+            testString: "a",
+            tstNumber: 1,
+            subObj: {
+                tstNumber: 1,
+            }
+        }
+
+        @vm.watch("a.testString")
+        onTestStringChange(newVal: string, oldVal: string) {
+            view.testString = newVal;
+        }
+
+        @vm.watch((host: TestHost) => host.a.tstNumber + host.a.subObj.tstNumber)
+        onTestNumberChange(newVal: number, oldVal: number) {
+            view.testNum = newVal
+        }
+
+        get newTestString() {
+            return this.a.testString + "666"
+        }
+
+        @vm.watch("newTestString")
+        onNewStringChange(newVal: string, oldVal: string) {
+            view.newValue = newVal;
+        }
+
+    }
+
+    var h = new TestHost();
+
+    h.a.tstNumber = 12
+    h.a.testString = "哈哈哈"
+
+    vm.Tick.next();
+
+    expect(view.testString).toBe("哈哈哈")
+    expect(view.testNum).toBe(13)
+    expect(view.newValue).toBe("哈哈哈666")
+
+})
