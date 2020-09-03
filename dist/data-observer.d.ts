@@ -4,11 +4,11 @@ declare namespace vm {
      * 递归遍历数组，进行ob对象的依赖记录。
      */
     function dependArray(value: any[]): void;
-    class Dependency {
+    class Dep {
         /**
          * 当前正在收集依赖的对象
          */
-        static collectTarget: Watcher | null;
+        static target: Watcher | null;
         /**
          * 当前正在收集以来的列队
          */
@@ -22,7 +22,7 @@ declare namespace vm {
         /**
          * 侦听者
          */
-        watcherList: Watcher[];
+        watchers: Watcher[];
         add(sub: Watcher): void;
         remove(sub: Watcher): void;
         /**
@@ -40,7 +40,7 @@ declare namespace vm {
         /**
          * 当前所有watch列表
          */
-        $watcherList: Watcher[];
+        $watchers: Watcher[];
         /**
          * 当前是否已经释放
          */
@@ -57,7 +57,7 @@ declare namespace vm {
         $destroy(): void;
     }
     class Host implements IHost {
-        $watcherList: Watcher[];
+        $watchers: Watcher[];
         $isDestroyed: boolean;
         constructor();
         $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void): Watcher | undefined;
@@ -135,7 +135,7 @@ declare namespace vm {
     val: any): void;
     class Observer {
         value: any;
-        dep: Dependency;
+        dep: Dep;
         constructor(value: any);
         /**
          * 遍历所有属性，拦截get set
@@ -178,12 +178,12 @@ declare namespace vm {
         /**
          * 当前收集的依赖，用于与新的依赖差异对比
          */
-        deps: Array<Dependency>;
+        deps: Array<Dep>;
         depIds: IIdMap;
         /**
          * 本轮收集的依赖，在作为当前依赖前，需要用于差异对比
          */
-        newDeps: Array<Dependency>;
+        newDeps: Array<Dep>;
         newDepIds: IIdMap;
         /**
          * 最终要执行的get函数
@@ -204,7 +204,7 @@ declare namespace vm {
          * 添加依赖
          * 在收集依赖的时候，触发 Dependency.collectTarget.addDep
          */
-        addDep(dep: Dependency): void;
+        addDep(dep: Dep): void;
         /**
          * 清理依赖收集
          */

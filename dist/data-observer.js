@@ -18,7 +18,7 @@ var vm;
         }
     }
     vm.dependArray = dependArray;
-    class Dependency {
+    class Dep {
         constructor() {
             /**
              * 唯一id，方便hashmap判断是否存在
@@ -27,37 +27,37 @@ var vm;
             /**
              * 侦听者
              */
-            this.watcherList = [];
+            this.watchers = [];
         }
         static pushCollectTarget(target) {
             this.collectTargetStack.push(target);
-            Dependency.collectTarget = target;
+            Dep.target = target;
         }
         static popCollectTarget() {
             this.collectTargetStack.pop();
-            Dependency.collectTarget = this.collectTargetStack[this.collectTargetStack.length - 1];
+            Dep.target = this.collectTargetStack[this.collectTargetStack.length - 1];
         }
         add(sub) {
-            this.watcherList.push(sub);
+            this.watchers.push(sub);
         }
         /*移除一个观察者对象*/
         remove(sub) {
-            vm.remove(this.watcherList, sub);
+            vm.remove(this.watchers, sub);
         }
         /**
          * 收集依赖
          */
         depend() {
-            if (Dependency.collectTarget) {
+            if (Dep.target) {
                 // Dep.target指向的是一个watcher
-                Dependency.collectTarget.addDep(this);
+                Dep.target.addDep(this);
             }
         }
         /**
          * 通知所有侦听者
          */
         notify() {
-            const ws = this.watcherList.slice();
+            const ws = this.watchers.slice();
             for (let i = 0, l = ws.length; i < l; i++) {
                 ws[i].update();
             }
@@ -66,19 +66,19 @@ var vm;
     /**
      * 当前正在收集依赖的对象
      */
-    Dependency.collectTarget = null;
+    Dep.target = null;
     /**
      * 当前正在收集以来的列队
      */
-    Dependency.collectTargetStack = [];
-    vm.Dependency = Dependency;
+    Dep.collectTargetStack = [];
+    vm.Dep = Dep;
 })(vm || (vm = {}));
 var vm;
 (function (vm) {
     class Host {
         constructor() {
             //防止产生枚举
-            vm.def(this, "$watcherList", []);
+            vm.def(this, "$watchers", []);
             vm.def(this, "$isDestroyed", false);
         }
         $watch(expOrFn, cb) {
@@ -87,12 +87,12 @@ var vm;
                 return;
             }
             let watcher = new vm.Watcher(this, expOrFn, cb);
-            this.$watcherList.push(watcher);
+            this.$watchers.push(watcher);
             return watcher;
         }
         $destroy() {
-            var temp = this.$watcherList;
-            this.$watcherList = [];
+            var temp = this.$watchers;
+            this.$watchers = [];
             for (let w of temp) {
                 w.teardown();
             }
@@ -104,10 +104,10 @@ var vm;
      * 向普通对象注入Host相关方法
      */
     function implementHost(obj) {
-        if (vm.hasOwn(obj, "$watcherList")) {
+        if (vm.hasOwn(obj, "$watchers")) {
             return obj;
         }
-        vm.def(obj, "$watcherList", []);
+        vm.def(obj, "$watchers", []);
         vm.def(obj, "$isDestroyed", false);
         vm.def(obj, "$watch", Host.prototype.$watch);
         vm.def(obj, "$destroy", Host.prototype.$destroy);
@@ -391,7 +391,7 @@ var vm;
      */
     val) {
         //必包的中依赖，相当于是每一个属性的附加对象，用于记录属性的所有以来侦听。
-        const dep = new vm.Dependency();
+        const dep = new vm.Dep();
         const property = Object.getOwnPropertyDescriptor(obj, key);
         if (property && property.configurable === false) {
             return;
@@ -405,7 +405,7 @@ var vm;
             get: function reactiveGetter() {
                 const value = getter ? getter.call(obj) : val;
                 //进行依赖收集，依赖收集前 Dependency.collectTarget 会被赋值，收集完成后会置空。
-                if (vm.Dependency.collectTarget) {
+                if (vm.Dep.target) {
                     dep.depend(); //将自身加入到Dependency.collectTarget中
                     if (valOb) {
                         valOb.dep.depend(); //属性值依赖
@@ -436,7 +436,7 @@ var vm;
     class Observer {
         constructor(value) {
             this.value = value;
-            this.dep = new vm.Dependency();
+            this.dep = new vm.Dep();
             //实现双向绑定
             vm.def(value, '__ob__', this);
             if (Array.isArray(value)) {
@@ -530,11 +530,11 @@ var vm;
          */
         get() {
             /*开始收集依赖*/
-            vm.Dependency.pushCollectTarget(this);
+            vm.Dep.pushCollectTarget(this);
             let value;
             value = this.getter.call(this.host, this.host);
             /*结束收集*/
-            vm.Dependency.popCollectTarget();
+            vm.Dep.popCollectTarget();
             this.cleanupDeps();
             return value;
         }
@@ -615,7 +615,7 @@ var vm;
          */
         teardown() {
             if (this.active) {
-                vm.remove(this.host.$watcherList, this);
+                vm.remove(this.host.$watchers, this);
                 let i = this.deps.length;
                 while (i--) {
                     this.deps[i].remove(this);

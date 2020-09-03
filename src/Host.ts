@@ -4,7 +4,7 @@ namespace vm {
         /**
          * 当前所有watch列表
          */
-        $watcherList: Watcher[];
+        $watchers: Watcher[];
 
         /**
          * 当前是否已经释放
@@ -26,12 +26,12 @@ namespace vm {
 
     export class Host implements IHost {
 
-        $watcherList!: Watcher[];
+        $watchers!: Watcher[];
         $isDestroyed!: boolean;
 
         constructor() {
             //防止产生枚举
-            def(this, "$watcherList", []);
+            def(this, "$watchers", []);
             def(this, "$isDestroyed", false);
         }
 
@@ -41,13 +41,13 @@ namespace vm {
                 return;
             }
             let watcher = new Watcher(this, expOrFn, cb)
-            this.$watcherList.push(watcher);
+            this.$watchers.push(watcher);
             return watcher;
         }
 
         $destroy() {
-            var temp = this.$watcherList;
-            this.$watcherList = [];
+            var temp = this.$watchers;
+            this.$watchers = [];
             for (let w of temp) {
                 w.teardown();
             }
@@ -60,10 +60,10 @@ namespace vm {
      * 向普通对象注入Host相关方法
      */
     export function implementHost<T>(obj: T): T & IHost {
-        if (hasOwn(obj, "$watcherList")) {
+        if (hasOwn(obj, "$watchers")) {
             return obj as any;
         }
-        def(obj, "$watcherList", []);
+        def(obj, "$watchers", []);
         def(obj, "$isDestroyed", false);
         def(obj, "$watch", Host.prototype.$watch);
         def(obj, "$destroy", Host.prototype.$destroy);

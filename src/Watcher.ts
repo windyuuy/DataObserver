@@ -26,13 +26,13 @@ namespace vm {
         /**
          * 当前收集的依赖，用于与新的依赖差异对比
          */
-        deps: Array<Dependency>;
+        deps: Array<Dep>;
         depIds: IIdMap;
 
         /**
          * 本轮收集的依赖，在作为当前依赖前，需要用于差异对比
          */
-        newDeps: Array<Dependency>;
+        newDeps: Array<Dep>;
         newDepIds: IIdMap;
 
         /**
@@ -85,13 +85,13 @@ namespace vm {
          */
         get() {
             /*开始收集依赖*/
-            Dependency.pushCollectTarget(this)
+            Dep.pushCollectTarget(this)
 
             let value
             value = this.getter.call(this.host, this.host)
 
             /*结束收集*/
-            Dependency.popCollectTarget()
+            Dep.popCollectTarget()
 
             this.cleanupDeps()
             return value
@@ -101,7 +101,7 @@ namespace vm {
          * 添加依赖
          * 在收集依赖的时候，触发 Dependency.collectTarget.addDep
          */
-        addDep(dep: Dependency) {
+        addDep(dep: Dep) {
             const id = dep.id
             if (!this.newDepIds.has(id)) {
                 this.newDepIds.add(id)
@@ -181,7 +181,7 @@ namespace vm {
          */
         teardown() {
             if (this.active) {
-                remove(this.host.$watcherList, this);
+                remove(this.host.$watchers, this);
                 let i = this.deps.length
                 while (i--) {
                     this.deps[i].remove(this)

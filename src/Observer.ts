@@ -69,7 +69,7 @@ namespace vm {
         val: any
     ) {
         //必包的中依赖，相当于是每一个属性的附加对象，用于记录属性的所有以来侦听。
-        const dep = new Dependency()
+        const dep = new Dep()
 
         const property = Object.getOwnPropertyDescriptor(obj, key)
         if (property && property.configurable === false) {
@@ -87,7 +87,7 @@ namespace vm {
                 const value = getter ? getter.call(obj) : val
 
                 //进行依赖收集，依赖收集前 Dependency.collectTarget 会被赋值，收集完成后会置空。
-                if (Dependency.collectTarget) {
+                if (Dep.target) {
                     dep.depend()//将自身加入到Dependency.collectTarget中
                     if (valOb) {
                         valOb.dep.depend()//属性值依赖
@@ -119,12 +119,12 @@ namespace vm {
 
     export class Observer {
         value: any;
-        dep: Dependency;
+        dep: Dep;
         constructor(
             value: any,
         ) {
             this.value = value;
-            this.dep = new Dependency();
+            this.dep = new Dep();
 
             //实现双向绑定
             def(value, '__ob__', this);

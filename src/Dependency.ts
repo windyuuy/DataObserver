@@ -17,12 +17,12 @@ namespace vm {
         }
     }
 
-    export class Dependency {
+    export class Dep {
 
         /**
          * 当前正在收集依赖的对象
          */
-        static collectTarget: Watcher | null = null;
+        static target: Watcher | null = null;
 
         /**
          * 当前正在收集以来的列队
@@ -31,12 +31,12 @@ namespace vm {
 
         static pushCollectTarget(target: Watcher) {
             this.collectTargetStack.push(target);
-            Dependency.collectTarget = target;
+            Dep.target = target;
         }
 
         static popCollectTarget() {
             this.collectTargetStack.pop();
-            Dependency.collectTarget = this.collectTargetStack[this.collectTargetStack.length - 1];
+            Dep.target = this.collectTargetStack[this.collectTargetStack.length - 1];
         }
 
         /**
@@ -47,24 +47,24 @@ namespace vm {
         /**
          * 侦听者
          */
-        watcherList: Watcher[] = [];
+        watchers: Watcher[] = [];
 
         add(sub: Watcher) {
-            this.watcherList.push(sub)
+            this.watchers.push(sub)
         }
 
         /*移除一个观察者对象*/
         remove(sub: Watcher) {
-            remove(this.watcherList, sub)
+            remove(this.watchers, sub)
         }
 
         /**
          * 收集依赖
          */
         depend() {
-            if (Dependency.collectTarget) {
+            if (Dep.target) {
                 // Dep.target指向的是一个watcher
-                Dependency.collectTarget.addDep(this)
+                Dep.target.addDep(this)
             }
         }
 
@@ -72,7 +72,7 @@ namespace vm {
          * 通知所有侦听者
          */
         notify() {
-            const ws = this.watcherList.slice()
+            const ws = this.watchers.slice()
             for (let i = 0, l = ws.length; i < l; i++) {
                 ws[i].update()
             }
