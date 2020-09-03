@@ -127,29 +127,38 @@ declare namespace vm {
         "(" = 2,
         ")" = 3,
         "." = 4,
-        "**" = 5,
-        "*" = 6,
-        "/" = 7,
-        "%" = 8,
-        "+" = 9,
-        "-" = 10,
-        ">" = 11,
-        "<" = 12,
-        ">=" = 13,
-        "<=" = 14,
-        "!=" = 15,
-        "==" = 16,
-        "&&" = 17,
-        "||" = 18,
-        "!" = 19,
-        "," = 20,
-        "number" = 21,
-        "word" = 22,
-        "string" = 23,
-        "boolean" = 24,
-        "()" = 25,
-        "[]" = 26,
-        "function" = 27
+        P1 = 5,
+        "!" = 6,
+        P2 = 7,
+        "**" = 8,
+        P3 = 9,
+        "*" = 10,
+        "/" = 11,
+        "%" = 12,
+        P4 = 13,
+        "+" = 14,
+        "-" = 15,
+        P5 = 16,
+        ">" = 17,
+        "<" = 18,
+        ">=" = 19,
+        "<=" = 20,
+        P6 = 21,
+        "!=" = 22,
+        "==" = 23,
+        P7 = 24,
+        "&&" = 25,
+        "||" = 26,
+        P8 = 27,
+        "," = 28,
+        P9 = 29,
+        "number" = 30,
+        "word" = 31,
+        "string" = 32,
+        "boolean" = 33,
+        "()" = 34,
+        "[]" = 35,
+        "function" = 36
     }
     class WordNode {
         type: NodeType;
@@ -165,7 +174,7 @@ declare namespace vm {
             [key: string]: any;
         }, expression: string);
         static toWords(expression: string): WordNode[];
-        static toAST(nodeList: WordNode[], expression: string): void;
+        static toAST(nodeList: WordNode[], expression: string): any;
         run(data: any): any;
     }
     /**

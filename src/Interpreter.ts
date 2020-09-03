@@ -1,25 +1,27 @@
 namespace vm {
     const symbolList = [
         "(", ")", "[", "]", ".",
+        "!",
         "**",
         "*", "/", "%",
         "+", "-",
         ">", "<", ">=", "<=",
         "!=", "==",
-        "&&", "||", "!",
+        "&&", "||",
         ",",
     ]
 
     export enum NodeType {
         //运算符
-        "[", "]", "(", ")", ".",
-        "**",
-        "*", "/", "%",
-        "+", "-",
-        ">", "<", ">=", "<=",
-        "!=", "==",
-        "&&", "||", "!",
-        ",",
+        "[", "]", "(", ")", ".", P1,
+        "!", P2,
+        "**", P3,
+        "*", "/", "%", P4,
+        "+", "-", P5,
+        ">", "<", ">=", "<=", P6,
+        "!=", "==", P7,
+        "&&", "||", P8,
+        ",", P9,
 
         //值
         "number",
@@ -27,7 +29,7 @@ namespace vm {
         "string",
         "boolean",
 
-        //组合
+        //组合，只会在AST中出现
         "()", "[]",
         "function"
 
@@ -42,9 +44,9 @@ namespace vm {
 
     class ASTNode {
         constructor(
-            public left: ASTNode | null,//一元运算符允许为空
+            public left: ASTNode | WordNode | null,//一元运算符允许为空
             public operator: NodeType,
-            public right: ASTNode | ASTNode[],//如果是函数调用会是一个列表
+            public right: ASTNode | WordNode | ASTNode[],//如果是函数调用会是一个列表
         ) { }
     }
 
@@ -177,8 +179,129 @@ namespace vm {
         }
 
         static toAST(nodeList: WordNode[], expression: string) {
-            var root: ASTNode
+            //1、读取左值
+            //2、读取运算符
+            //3、读取右值，如果右值右边的运算符顺序>当前运算符，则递归读取右边完整的值
+            //4、最终形成可直接执行的树
 
+            var error = (op: WordNode, v?: WordNode) => {
+                if (v) {
+                    throw `语法错误，${expression}，运算符'${NodeType[op.type]}'无法与'${NodeType[v.type]}'${v.value}匹配。`
+                } else {
+                    throw `语法错误，${expression}，运算符'${NodeType[op.type]}'无法合适的左值或右值`
+                }
+            }
+
+            var getPN = (op: WordNode) => {
+                if (op.type < NodeType.P1) {
+                    return NodeType.P1
+                } else if (op.type < NodeType.P2) {
+                    return NodeType.P2
+                } else if (op.type < NodeType.P3) {
+                    return NodeType.P3
+                } else if (op.type < NodeType.P4) {
+                    return NodeType.P4
+                } else if (op.type < NodeType.P5) {
+                    return NodeType.P5
+                } else if (op.type < NodeType.P6) {
+                    return NodeType.P6
+                } else if (op.type < NodeType.P7) {
+                    return NodeType.P7
+                } else if (op.type < NodeType.P8) {
+                    return NodeType.P8
+                } else if (op.type < NodeType.P9) {
+                    return NodeType.P9
+                } else {
+                    throw "目标不是运算符" + NodeType[op.type] + " " + String(op.value);
+                }
+            }
+
+            //永远都是从左往右读取
+            var read = (/*运算符的位置*/pos: number): ASTNode | undefined => {
+                let op = nodeList[pos];
+
+                if (op.type < NodeType.P9) {
+                    throw "请确保read函数传入的是运算符" + NodeType[op.type] + " " + String(op.value);
+                }
+
+                if (op.type == NodeType["("]) {
+                    //读取括号
+                    let left = nodeList[pos - 1];
+                    if (left && (left.type == NodeType.word || left.type == NodeType[")"] || left.type == NodeType["]"])) {
+                        //左边的为函数调用
+                    } else {
+                        //仅仅只是一个组合
+                        return loopRead(pos + 1);
+                    }
+
+                } else if (op.type == NodeType["["]) {
+
+                } else if (op.type == NodeType["!"]) {
+                    //一元运算符
+                    let right = nodeList[pos + 1];
+                    if (right == null) {
+                        error(op);
+                    }
+                    if (right.type < NodeType.P9) {
+                        //是运算符,且只可能是括号，否则肯定不正常
+                        if (right.type == NodeType["("]) {
+                            return new ASTNode(null, op.type, loopRead(pos + 1));
+                        } else {
+                            error(op, right);
+                        }
+                    } else {
+                        //值
+                        if (right.type == NodeType.string) {
+                            error(op, right);//叹号后面怎么能是字符串
+                        }
+
+                        //验证right2
+                        let right2 = nodeList[pos + 2];
+                        if (right2 && right2.type < NodeType.P1) {
+                            //优先right2,如果是(则有可能是函数调用
+                            return new ASTNode(null, op.type, read(pos + 2)!);
+                        } else {
+                            //直接返回
+                            return new ASTNode(null, op.type, right);
+                        }
+                    }
+
+                } else {
+                    //二元运算符
+                    let left = nodeList[pos - 1];
+                    let right = nodeList[pos + 1];
+
+                    if (left.type < NodeType.P9) {
+                        //左值不可以是运算符
+                        error(op, left)
+                    }
+
+                    if (right.type < NodeType.P9) {
+                        //是运算符,且只可能是括号，否则肯定不正常
+                        if (right.type == NodeType["("]) {
+                            return new ASTNode(null, op.type, loopRead(pos + 1));
+                        } else {
+                            error(op, right);
+                        }
+                    } else {
+                        //验证right2
+                        let right2 = nodeList[pos + 2];
+                        if (right2 && right2.type < NodeType.P9 && getPN(right2) < getPN(op)) {
+                            //优先右侧
+                            return new ASTNode(left, op.type, read(pos + 2)!);
+                        } else {
+                            //直接返回
+                            return new ASTNode(left, op.type, right);
+                        }
+                    }
+                }
+            }
+
+            var loopRead = (/*开始循环的位置*/pos: number) => {
+                return new NodeType()
+            }
+
+            return loopRead(0);
         }
 
         run(data: any): any {

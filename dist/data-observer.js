@@ -327,12 +327,13 @@ var vm;
 (function (vm) {
     const symbolList = [
         "(", ")", "[", "]", ".",
+        "!",
         "**",
         "*", "/", "%",
         "+", "-",
         ">", "<", ">=", "<=",
         "!=", "==",
-        "&&", "||", "!",
+        "&&", "||",
         ",",
     ];
     let NodeType;
@@ -343,31 +344,40 @@ var vm;
         NodeType[NodeType["("] = 2] = "(";
         NodeType[NodeType[")"] = 3] = ")";
         NodeType[NodeType["."] = 4] = ".";
-        NodeType[NodeType["**"] = 5] = "**";
-        NodeType[NodeType["*"] = 6] = "*";
-        NodeType[NodeType["/"] = 7] = "/";
-        NodeType[NodeType["%"] = 8] = "%";
-        NodeType[NodeType["+"] = 9] = "+";
-        NodeType[NodeType["-"] = 10] = "-";
-        NodeType[NodeType[">"] = 11] = ">";
-        NodeType[NodeType["<"] = 12] = "<";
-        NodeType[NodeType[">="] = 13] = ">=";
-        NodeType[NodeType["<="] = 14] = "<=";
-        NodeType[NodeType["!="] = 15] = "!=";
-        NodeType[NodeType["=="] = 16] = "==";
-        NodeType[NodeType["&&"] = 17] = "&&";
-        NodeType[NodeType["||"] = 18] = "||";
-        NodeType[NodeType["!"] = 19] = "!";
-        NodeType[NodeType[","] = 20] = ",";
+        NodeType[NodeType["P1"] = 5] = "P1";
+        NodeType[NodeType["!"] = 6] = "!";
+        NodeType[NodeType["P2"] = 7] = "P2";
+        NodeType[NodeType["**"] = 8] = "**";
+        NodeType[NodeType["P3"] = 9] = "P3";
+        NodeType[NodeType["*"] = 10] = "*";
+        NodeType[NodeType["/"] = 11] = "/";
+        NodeType[NodeType["%"] = 12] = "%";
+        NodeType[NodeType["P4"] = 13] = "P4";
+        NodeType[NodeType["+"] = 14] = "+";
+        NodeType[NodeType["-"] = 15] = "-";
+        NodeType[NodeType["P5"] = 16] = "P5";
+        NodeType[NodeType[">"] = 17] = ">";
+        NodeType[NodeType["<"] = 18] = "<";
+        NodeType[NodeType[">="] = 19] = ">=";
+        NodeType[NodeType["<="] = 20] = "<=";
+        NodeType[NodeType["P6"] = 21] = "P6";
+        NodeType[NodeType["!="] = 22] = "!=";
+        NodeType[NodeType["=="] = 23] = "==";
+        NodeType[NodeType["P7"] = 24] = "P7";
+        NodeType[NodeType["&&"] = 25] = "&&";
+        NodeType[NodeType["||"] = 26] = "||";
+        NodeType[NodeType["P8"] = 27] = "P8";
+        NodeType[NodeType[","] = 28] = ",";
+        NodeType[NodeType["P9"] = 29] = "P9";
         //值
-        NodeType[NodeType["number"] = 21] = "number";
-        NodeType[NodeType["word"] = 22] = "word";
-        NodeType[NodeType["string"] = 23] = "string";
-        NodeType[NodeType["boolean"] = 24] = "boolean";
-        //组合
-        NodeType[NodeType["()"] = 25] = "()";
-        NodeType[NodeType["[]"] = 26] = "[]";
-        NodeType[NodeType["function"] = 27] = "function";
+        NodeType[NodeType["number"] = 30] = "number";
+        NodeType[NodeType["word"] = 31] = "word";
+        NodeType[NodeType["string"] = 32] = "string";
+        NodeType[NodeType["boolean"] = 33] = "boolean";
+        //组合，只会在AST中出现
+        NodeType[NodeType["()"] = 34] = "()";
+        NodeType[NodeType["[]"] = 35] = "[]";
+        NodeType[NodeType["function"] = 36] = "function";
     })(NodeType = vm.NodeType || (vm.NodeType = {}));
     class WordNode {
         constructor(type, value) {
@@ -506,7 +516,136 @@ var vm;
             return nodeList;
         }
         static toAST(nodeList, expression) {
-            var root;
+            //1、读取左值
+            //2、读取运算符
+            //3、读取右值，如果右值右边的运算符顺序>当前运算符，则递归读取右边完整的值
+            //4、最终形成可直接执行的树
+            var error = (op, v) => {
+                if (v) {
+                    throw `语法错误，${expression}，运算符'${NodeType[op.type]}'无法与'${NodeType[v.type]}'${v.value}匹配。`;
+                }
+                else {
+                    throw `语法错误，${expression}，运算符'${NodeType[op.type]}'无法合适的左值或右值`;
+                }
+            };
+            var getPN = (op) => {
+                if (op.type < NodeType.P1) {
+                    return NodeType.P1;
+                }
+                else if (op.type < NodeType.P2) {
+                    return NodeType.P2;
+                }
+                else if (op.type < NodeType.P3) {
+                    return NodeType.P3;
+                }
+                else if (op.type < NodeType.P4) {
+                    return NodeType.P4;
+                }
+                else if (op.type < NodeType.P5) {
+                    return NodeType.P5;
+                }
+                else if (op.type < NodeType.P6) {
+                    return NodeType.P6;
+                }
+                else if (op.type < NodeType.P7) {
+                    return NodeType.P7;
+                }
+                else if (op.type < NodeType.P8) {
+                    return NodeType.P8;
+                }
+                else if (op.type < NodeType.P9) {
+                    return NodeType.P9;
+                }
+                else {
+                    throw "目标不是运算符" + NodeType[op.type] + " " + String(op.value);
+                }
+            };
+            //永远都是从左往右读取
+            var read = (/*运算符的位置*/ pos) => {
+                let op = nodeList[pos];
+                if (op.type < NodeType.P9) {
+                    throw "请确保read函数传入的是运算符" + NodeType[op.type] + " " + String(op.value);
+                }
+                if (op.type == NodeType["("]) {
+                    //读取括号
+                    let left = nodeList[pos - 1];
+                    if (left && (left.type == NodeType.word || left.type == NodeType[")"] || left.type == NodeType["]"])) {
+                        //左边的为函数调用
+                    }
+                    else {
+                        //仅仅只是一个组合
+                        return loopRead(pos + 1);
+                    }
+                }
+                else if (op.type == NodeType["["]) {
+                }
+                else if (op.type == NodeType["!"]) {
+                    //一元运算符
+                    let right = nodeList[pos + 1];
+                    if (right == null) {
+                        error(op);
+                    }
+                    if (right.type < NodeType.P9) {
+                        //是运算符,且只可能是括号，否则肯定不正常
+                        if (right.type == NodeType["("]) {
+                            return new ASTNode(null, op.type, loopRead(pos + 1));
+                        }
+                        else {
+                            error(op, right);
+                        }
+                    }
+                    else {
+                        //值
+                        if (right.type == NodeType.string) {
+                            error(op, right); //叹号后面怎么能是字符串
+                        }
+                        //验证right2
+                        let right2 = nodeList[pos + 2];
+                        if (right2 && right2.type < NodeType.P1) {
+                            //优先right2,如果是(则有可能是函数调用
+                            return new ASTNode(null, op.type, read(pos + 2));
+                        }
+                        else {
+                            //直接返回
+                            return new ASTNode(null, op.type, right);
+                        }
+                    }
+                }
+                else {
+                    //二元运算符
+                    let left = nodeList[pos - 1];
+                    let right = nodeList[pos + 1];
+                    if (left.type < NodeType.P9) {
+                        //左值不可以是运算符
+                        error(op, left);
+                    }
+                    if (right.type < NodeType.P9) {
+                        //是运算符,且只可能是括号，否则肯定不正常
+                        if (right.type == NodeType["("]) {
+                            return new ASTNode(null, op.type, loopRead(pos + 1));
+                        }
+                        else {
+                            error(op, right);
+                        }
+                    }
+                    else {
+                        //验证right2
+                        let right2 = nodeList[pos + 2];
+                        if (right2 && right2.type < NodeType.P9 && getPN(right2) < getPN(op)) {
+                            //优先右侧
+                            return new ASTNode(left, op.type, read(pos + 2));
+                        }
+                        else {
+                            //直接返回
+                            return new ASTNode(left, op.type, right);
+                        }
+                    }
+                }
+            };
+            var loopRead = (/*开始循环的位置*/ pos) => {
+                return new NodeType();
+            };
+            return loopRead(0);
         }
         run(data) {
         }
