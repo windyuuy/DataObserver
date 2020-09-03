@@ -325,6 +325,186 @@ var vm;
 })(vm || (vm = {}));
 var vm;
 (function (vm) {
+    const symbolList = [
+        "(", ")", "[", "]", ".",
+        "**",
+        "*", "/", "%",
+        "+", "-",
+        ">", "<", ">=", "<=",
+        "!=", "==",
+        "&&", "||", "!",
+    ];
+    let NodeType;
+    (function (NodeType) {
+        //运算符
+        NodeType[NodeType["["] = 0] = "[";
+        NodeType[NodeType["]"] = 1] = "]";
+        NodeType[NodeType["("] = 2] = "(";
+        NodeType[NodeType[")"] = 3] = ")";
+        NodeType[NodeType["."] = 4] = ".";
+        NodeType[NodeType["**"] = 5] = "**";
+        NodeType[NodeType["*"] = 6] = "*";
+        NodeType[NodeType["/"] = 7] = "/";
+        NodeType[NodeType["%"] = 8] = "%";
+        NodeType[NodeType["+"] = 9] = "+";
+        NodeType[NodeType["-"] = 10] = "-";
+        NodeType[NodeType[">"] = 11] = ">";
+        NodeType[NodeType["<"] = 12] = "<";
+        NodeType[NodeType[">="] = 13] = ">=";
+        NodeType[NodeType["<="] = 14] = "<=";
+        NodeType[NodeType["!="] = 15] = "!=";
+        NodeType[NodeType["=="] = 16] = "==";
+        NodeType[NodeType["&&"] = 17] = "&&";
+        NodeType[NodeType["||"] = 18] = "||";
+        NodeType[NodeType["!"] = 19] = "!";
+        //数值
+        NodeType[NodeType["number"] = 20] = "number";
+        NodeType[NodeType["word"] = 21] = "word";
+        NodeType[NodeType["string"] = 22] = "string";
+        NodeType[NodeType["boolean"] = 23] = "boolean";
+    })(NodeType = vm.NodeType || (vm.NodeType = {}));
+    class WordNode {
+        constructor(type, value) {
+            this.type = type;
+            this.value = value;
+        }
+    }
+    const zeroCode = "0".charCodeAt(0);
+    const nineCode = "9".charCodeAt(0);
+    const operatorCharMap = {};
+    symbolList.forEach(a => operatorCharMap[a.charAt(0)] = true);
+    const markMap = {};
+    ["\"", "'", "`"].forEach(a => markMap[a] = true);
+    const doubleOpMap = {};
+    symbolList.forEach(a => {
+        if (a.length > 1) {
+            doubleOpMap[a.charAt(0)] = true;
+        }
+    });
+    const spaceMap = {};
+    [" ", "\n", "\r", "\t", "\s"].forEach(a => spaceMap[a] = true);
+    class Interpreter {
+        constructor(environment, expression) {
+            this.environment = environment;
+            this.expression = expression;
+            Interpreter.toAST(Interpreter.toWords(this.expression));
+        }
+        static toWords(expression) {
+            var temp = "";
+            var lastChar = "";
+            var state = 0; //0初始状态；1数字；2运算符；3引号字符串；4单词
+            var markType;
+            var nodeList = [];
+            var reset = () => {
+                state = 0;
+                temp = '';
+            };
+            var run = (char) => {
+                if (state == 0) {
+                    if (spaceMap[char]) {
+                        return;
+                    }
+                    let code = char.charCodeAt(0);
+                    if (code >= zeroCode && code <= nineCode) {
+                        //数字
+                        state = 1;
+                        temp += char;
+                    }
+                    else if (operatorCharMap[char]) {
+                        //运算符
+                        temp += char;
+                        if (doubleOpMap[char]) {
+                            //可能是多运算符
+                            state = 2;
+                        }
+                        else {
+                            if (NodeType[temp] == undefined) {
+                                throw "表达式编译失败" + expression + " 不支持的运算符: " + temp;
+                            }
+                            nodeList.push(new WordNode(NodeType[temp], null));
+                            reset();
+                        }
+                    }
+                    else if (markMap[char]) {
+                        //引号
+                        markType = char;
+                        state = 3;
+                    }
+                    else {
+                        //单词
+                        temp += char;
+                        state = 4;
+                    }
+                }
+                else if (state == 1) {
+                    //数字
+                    let code = char.charCodeAt(0);
+                    if (code >= zeroCode && code <= nineCode || char == ".") {
+                        temp += char;
+                    }
+                    else {
+                        nodeList.push(new WordNode(NodeType.number, parseFloat(temp)));
+                        reset();
+                        run(char); //重新执行
+                    }
+                }
+                else if (state == 2) {
+                    //运算符
+                    if (NodeType[(temp + char)] != undefined) {
+                        //识别到运算符
+                        temp += char;
+                        nodeList.push(new WordNode(NodeType[temp], null));
+                        reset();
+                    }
+                    else {
+                        nodeList.push(new WordNode(NodeType[temp], null));
+                        reset();
+                        run(char); //重新执行
+                    }
+                }
+                else if (state == 3) {
+                    //引号
+                    if (char == markType && lastChar != "\\") {
+                        nodeList.push(new WordNode(NodeType.string, temp));
+                        reset();
+                    }
+                    else {
+                        temp += char;
+                    }
+                }
+                else if (state == 4) {
+                    //单词
+                    if (spaceMap[char] || operatorCharMap[char] || markMap[char]) {
+                        nodeList.push(new WordNode(NodeType.word, temp));
+                        reset();
+                        run(char); //重新执行
+                    }
+                    else {
+                        temp += char;
+                    }
+                }
+            };
+            for (const char of expression) {
+                run(char);
+                lastChar = char;
+            }
+            run(" "); //传入空格，使其收集最后的结束点
+            return nodeList;
+        }
+        static toAST(nodeList) {
+        }
+        run(data) {
+        }
+    }
+    vm.Interpreter = Interpreter;
+    /**
+     * 当前环境列表
+     */
+    vm.environment = {};
+    vm.environment["Math"] = Math; //数学库
+})(vm || (vm = {}));
+var vm;
+(function (vm) {
     //创建数组的函数代理
     var arrayProto = Array.prototype;
     var arrayMethods = Object.create(arrayProto);

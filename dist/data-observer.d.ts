@@ -121,6 +121,58 @@ declare namespace vm {
     var IdMap: new () => IIdMap;
 }
 declare namespace vm {
+    export enum NodeType {
+        "[" = 0,
+        "]" = 1,
+        "(" = 2,
+        ")" = 3,
+        "." = 4,
+        "**" = 5,
+        "*" = 6,
+        "/" = 7,
+        "%" = 8,
+        "+" = 9,
+        "-" = 10,
+        ">" = 11,
+        "<" = 12,
+        ">=" = 13,
+        "<=" = 14,
+        "!=" = 15,
+        "==" = 16,
+        "&&" = 17,
+        "||" = 18,
+        "!" = 19,
+        "number" = 20,
+        "word" = 21,
+        "string" = 22,
+        "boolean" = 23
+    }
+    class WordNode {
+        type: NodeType;
+        value: any;
+        constructor(type: NodeType, value: any);
+    }
+    export class Interpreter {
+        environment: {
+            [key: string]: any;
+        };
+        expression: string;
+        constructor(environment: {
+            [key: string]: any;
+        }, expression: string);
+        static toWords(expression: string): WordNode[];
+        static toAST(nodeList: WordNode[]): void;
+        run(data: any): any;
+    }
+    /**
+     * 当前环境列表
+     */
+    export var environment: {
+        [key: string]: any;
+    };
+    export {};
+}
+declare namespace vm {
     /**
      * 将对象处理为可观察对象
      */
