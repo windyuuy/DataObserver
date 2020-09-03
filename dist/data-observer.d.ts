@@ -142,10 +142,14 @@ declare namespace vm {
         "&&" = 17,
         "||" = 18,
         "!" = 19,
-        "number" = 20,
-        "word" = 21,
-        "string" = 22,
-        "boolean" = 23
+        "," = 20,
+        "number" = 21,
+        "word" = 22,
+        "string" = 23,
+        "boolean" = 24,
+        "()" = 25,
+        "[]" = 26,
+        "function" = 27
     }
     class WordNode {
         type: NodeType;
@@ -161,7 +165,7 @@ declare namespace vm {
             [key: string]: any;
         }, expression: string);
         static toWords(expression: string): WordNode[];
-        static toAST(nodeList: WordNode[]): void;
+        static toAST(nodeList: WordNode[], expression: string): void;
         run(data: any): any;
     }
     /**

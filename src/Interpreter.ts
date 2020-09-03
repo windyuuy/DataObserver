@@ -7,6 +7,7 @@ namespace vm {
         ">", "<", ">=", "<=",
         "!=", "==",
         "&&", "||", "!",
+        ",",
     ]
 
     export enum NodeType {
@@ -18,18 +19,32 @@ namespace vm {
         ">", "<", ">=", "<=",
         "!=", "==",
         "&&", "||", "!",
+        ",",
 
-        //数值
+        //值
         "number",
         "word",
         "string",
-        "boolean"
+        "boolean",
+
+        //组合
+        "()", "[]",
+        "function"
+
     }
 
     class WordNode {
         constructor(
             public type: NodeType,
             public value: any
+        ) { }
+    }
+
+    class ASTNode {
+        constructor(
+            public left: ASTNode | null,//一元运算符允许为空
+            public operator: NodeType,
+            public right: ASTNode | ASTNode[],//如果是函数调用会是一个列表
         ) { }
     }
 
@@ -60,7 +75,7 @@ namespace vm {
             public expression: string
         ) {
 
-            Interpreter.toAST(Interpreter.toWords(this.expression));
+            Interpreter.toAST(Interpreter.toWords(this.expression), this.expression);
         }
 
         static toWords(expression: string) {
@@ -161,7 +176,8 @@ namespace vm {
             return nodeList;
         }
 
-        static toAST(nodeList: WordNode[]) {
+        static toAST(nodeList: WordNode[], expression: string) {
+            var root: ASTNode
 
         }
 

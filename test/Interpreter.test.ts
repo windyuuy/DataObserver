@@ -34,7 +34,7 @@ test("词法分析", () => {
     expect(nodeList[2].type).toEqual(vm.NodeType.word)
     expect(nodeList[2].value).toEqual("b")
 
-    var nodeList = vm.Interpreter.toWords("(a+b-c)*d/e**4>123<312>=11.1<=222!=3==4&&'aa'||\"bb\"!`cc`")
+    var nodeList = vm.Interpreter.toWords("(a+b-c)*d/e**4>123<312>=11.1<=222!=3==4&&'aa'||\"bb\"!`cc`,")
     expect(nodeList[0].type).toEqual(vm.NodeType["("])
     expect(nodeList[0].value).toEqual(null)
     expect(nodeList[1].type).toEqual(vm.NodeType.word)
@@ -97,5 +97,8 @@ test("词法分析", () => {
     expect(nodeList[29].value).toEqual(null)
     expect(nodeList[30].type).toEqual(vm.NodeType.string)
     expect(nodeList[30].value).toEqual("cc")
+    expect(nodeList[31].type).toEqual(vm.NodeType[","])
+    expect(nodeList[31].value).toEqual(null)
+
 
 })

@@ -333,6 +333,7 @@ var vm;
         ">", "<", ">=", "<=",
         "!=", "==",
         "&&", "||", "!",
+        ",",
     ];
     let NodeType;
     (function (NodeType) {
@@ -357,16 +358,29 @@ var vm;
         NodeType[NodeType["&&"] = 17] = "&&";
         NodeType[NodeType["||"] = 18] = "||";
         NodeType[NodeType["!"] = 19] = "!";
-        //数值
-        NodeType[NodeType["number"] = 20] = "number";
-        NodeType[NodeType["word"] = 21] = "word";
-        NodeType[NodeType["string"] = 22] = "string";
-        NodeType[NodeType["boolean"] = 23] = "boolean";
+        NodeType[NodeType[","] = 20] = ",";
+        //值
+        NodeType[NodeType["number"] = 21] = "number";
+        NodeType[NodeType["word"] = 22] = "word";
+        NodeType[NodeType["string"] = 23] = "string";
+        NodeType[NodeType["boolean"] = 24] = "boolean";
+        //组合
+        NodeType[NodeType["()"] = 25] = "()";
+        NodeType[NodeType["[]"] = 26] = "[]";
+        NodeType[NodeType["function"] = 27] = "function";
     })(NodeType = vm.NodeType || (vm.NodeType = {}));
     class WordNode {
         constructor(type, value) {
             this.type = type;
             this.value = value;
+        }
+    }
+    class ASTNode {
+        constructor(left, //一元运算符允许为空
+        operator, right) {
+            this.left = left;
+            this.operator = operator;
+            this.right = right;
         }
     }
     const zeroCode = "0".charCodeAt(0);
@@ -387,7 +401,7 @@ var vm;
         constructor(environment, expression) {
             this.environment = environment;
             this.expression = expression;
-            Interpreter.toAST(Interpreter.toWords(this.expression));
+            Interpreter.toAST(Interpreter.toWords(this.expression), this.expression);
         }
         static toWords(expression) {
             var temp = "";
@@ -491,7 +505,8 @@ var vm;
             run(" "); //传入空格，使其收集最后的结束点
             return nodeList;
         }
-        static toAST(nodeList) {
+        static toAST(nodeList, expression) {
+            var root;
         }
         run(data) {
         }
