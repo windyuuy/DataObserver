@@ -66,13 +66,35 @@ declare namespace vm {
     /**
      * 向普通对象注入Host相关方法
      */
-    function implementHost(obj: any): IHost;
+    function implementHost<T>(obj: T): T & IHost;
+    /**
+     * 设置或添加某个对象的某个属性
+     * @param target 对象，也可以是数组
+     * @param key
+     * @param value
+     */
+    function set(target: any, key: string | number, val: any): any;
+    /**
+     * 删除某个对象的某个属性
+     * @param target 对象，也可以是数组
+     * @param key
+     */
+    function del(target: any, key: string | number): void;
 }
 declare namespace vm {
     function isObject(obj: any): boolean;
     function hasOwn(obj: any, key: string): boolean;
     function isPlainObject(obj: any): boolean;
     function def(obj: any, key: string, val: any, enumerable?: boolean): void;
+    function isUndef(v: any): boolean;
+    function isDef(v: any): boolean;
+    function isTrue(v: any): boolean;
+    function isFalse(v: any): boolean;
+    /**
+     * 判断是否为单纯的数据类型
+     */
+    function isPrimitive(value: any): boolean;
+    function isValidArrayIndex(val: any): boolean;
     function remove(arr: any[], item: any): any[] | undefined;
     /**
      * 讲使用.分隔的路径访问转换为函数。

@@ -24,6 +24,42 @@ namespace vm {
         });
     }
 
+    export function isUndef(v: any) {
+        return v === undefined || v === null
+    }
+
+    export function isDef(v: any) {
+        return v !== undefined && v !== null
+    }
+
+    export function isTrue(v: any) {
+        return v === true
+    }
+
+    export function isFalse(v: any) {
+        return v === false
+    }
+
+    /**
+     * 判断是否为单纯的数据类型
+     */
+    export function isPrimitive(value: any) {
+        return (
+            typeof value === 'string' ||
+            typeof value === 'number' ||
+            // $flow-disable-line
+            typeof value === 'symbol' ||
+            typeof value === 'boolean'
+        )
+    }
+
+    export function isValidArrayIndex(val: any) {
+        var n = parseFloat(String(val));
+        return n >= 0 && Math.floor(n) === n && isFinite(val)
+    }
+
+
+
     export function remove(arr: any[], item: any) {
         if (arr.length) {
             var index = arr.indexOf(item);

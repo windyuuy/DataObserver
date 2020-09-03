@@ -114,6 +114,61 @@ var vm;
         return obj;
     }
     vm.implementHost = implementHost;
+    /**
+     * 设置或添加某个对象的某个属性
+     * @param target 对象，也可以是数组
+     * @param key
+     * @param value
+     */
+    function set(target, key, val) {
+        if (vm.isUndef(target) || vm.isPrimitive(target)) {
+            console.warn(("无法设置属性到 undefined, null, 或 primitive 值: " + ((target))));
+            return;
+        }
+        if (Array.isArray(target) && vm.isValidArrayIndex(key)) {
+            target.length = Math.max(target.length, key);
+            target.splice(key, 1, val);
+            return val;
+        }
+        if (key in target && !(key in Object.prototype)) {
+            target[key] = val;
+            return val;
+        }
+        var ob = (target).__ob__;
+        if (!ob) {
+            target[key] = val;
+            return val;
+        }
+        vm.defineReactive(ob.value, key, val);
+        ob.dep.notify();
+        return val;
+    }
+    vm.set = set;
+    /**
+     * 删除某个对象的某个属性
+     * @param target 对象，也可以是数组
+     * @param key
+     */
+    function del(target, key) {
+        if (vm.isUndef(target) || vm.isPrimitive(target)) {
+            console.warn(("无法删除属性到 undefined, null, 或 primitive 值: " + ((target))));
+            return;
+        }
+        if (Array.isArray(target) && vm.isValidArrayIndex(key)) {
+            target.splice(key, 1);
+            return;
+        }
+        var ob = (target).__ob__;
+        if (!vm.hasOwn(target, key)) {
+            return;
+        }
+        delete target[key];
+        if (!ob) {
+            return;
+        }
+        ob.dep.notify();
+    }
+    vm.del = del;
 })(vm || (vm = {}));
 var vm;
 (function (vm) {
@@ -140,6 +195,38 @@ var vm;
         });
     }
     vm.def = def;
+    function isUndef(v) {
+        return v === undefined || v === null;
+    }
+    vm.isUndef = isUndef;
+    function isDef(v) {
+        return v !== undefined && v !== null;
+    }
+    vm.isDef = isDef;
+    function isTrue(v) {
+        return v === true;
+    }
+    vm.isTrue = isTrue;
+    function isFalse(v) {
+        return v === false;
+    }
+    vm.isFalse = isFalse;
+    /**
+     * 判断是否为单纯的数据类型
+     */
+    function isPrimitive(value) {
+        return (typeof value === 'string' ||
+            typeof value === 'number' ||
+            // $flow-disable-line
+            typeof value === 'symbol' ||
+            typeof value === 'boolean');
+    }
+    vm.isPrimitive = isPrimitive;
+    function isValidArrayIndex(val) {
+        var n = parseFloat(String(val));
+        return n >= 0 && Math.floor(n) === n && isFinite(val);
+    }
+    vm.isValidArrayIndex = isValidArrayIndex;
     function remove(arr, item) {
         if (arr.length) {
             var index = arr.indexOf(item);

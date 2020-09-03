@@ -59,14 +59,69 @@ namespace vm {
     /**
      * 向普通对象注入Host相关方法
      */
-    export function implementHost(obj: any): IHost {
+    export function implementHost<T>(obj: T): T & IHost {
         if (hasOwn(obj, "$watcherList")) {
-            return obj;
+            return obj as any;
         }
         def(obj, "$watcherList", []);
         def(obj, "$isDestroyed", false);
         def(obj, "$watch", Host.prototype.$watch);
         def(obj, "$destroy", Host.prototype.$destroy);
-        return obj;
+        return obj as any;
+    }
+
+    /**
+     * 设置或添加某个对象的某个属性
+     * @param target 对象，也可以是数组
+     * @param key 
+     * @param value 
+     */
+    export function set(target: any, key: string | number, val: any) {
+        if (isUndef(target) || isPrimitive(target)) {
+            console.warn(("无法设置属性到 undefined, null, 或 primitive 值: " + ((target))));
+            return;
+        }
+        if (Array.isArray(target) && isValidArrayIndex(key)) {
+            target.length = Math.max(target.length, key as number);
+            target.splice(key as number, 1, val);
+            return val
+        }
+        if (key in target && !(key in Object.prototype)) {
+            target[key] = val;
+            return val
+        }
+        var ob = (target).__ob__;
+        if (!ob) {
+            target[key] = val;
+            return val
+        }
+        defineReactive(ob.value, key as string, val);
+        ob.dep.notify();
+        return val
+    }
+
+    /**
+     * 删除某个对象的某个属性
+     * @param target 对象，也可以是数组
+     * @param key 
+     */
+    export function del(target: any, key: string | number) {
+        if (isUndef(target) || isPrimitive(target)) {
+            console.warn(("无法删除属性到 undefined, null, 或 primitive 值: " + ((target))));
+            return;
+        }
+        if (Array.isArray(target) && isValidArrayIndex(key)) {
+            target.splice(key as number, 1);
+            return
+        }
+        var ob = (target).__ob__;
+        if (!hasOwn(target, key as string)) {
+            return
+        }
+        delete target[key];
+        if (!ob) {
+            return
+        }
+        ob.dep.notify();
     }
 }
