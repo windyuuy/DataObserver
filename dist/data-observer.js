@@ -340,42 +340,42 @@ var vm;
     (function (NodeType) {
         //运算符
         NodeType[NodeType["["] = 0] = "[";
-        NodeType[NodeType["]"] = 1] = "]";
-        NodeType[NodeType["("] = 2] = "(";
-        NodeType[NodeType[")"] = 3] = ")";
-        NodeType[NodeType["."] = 4] = ".";
-        NodeType[NodeType["P1"] = 5] = "P1";
-        NodeType[NodeType["!"] = 6] = "!";
-        NodeType[NodeType["P2"] = 7] = "P2";
-        NodeType[NodeType["**"] = 8] = "**";
-        NodeType[NodeType["P3"] = 9] = "P3";
-        NodeType[NodeType["*"] = 10] = "*";
-        NodeType[NodeType["/"] = 11] = "/";
-        NodeType[NodeType["%"] = 12] = "%";
-        NodeType[NodeType["P4"] = 13] = "P4";
-        NodeType[NodeType["+"] = 14] = "+";
-        NodeType[NodeType["-"] = 15] = "-";
-        NodeType[NodeType["P5"] = 16] = "P5";
-        NodeType[NodeType[">"] = 17] = ">";
-        NodeType[NodeType["<"] = 18] = "<";
-        NodeType[NodeType[">="] = 19] = ">=";
-        NodeType[NodeType["<="] = 20] = "<=";
-        NodeType[NodeType["P6"] = 21] = "P6";
-        NodeType[NodeType["!="] = 22] = "!=";
-        NodeType[NodeType["=="] = 23] = "==";
-        NodeType[NodeType["P7"] = 24] = "P7";
-        NodeType[NodeType["&&"] = 25] = "&&";
-        NodeType[NodeType["||"] = 26] = "||";
-        NodeType[NodeType["P8"] = 27] = "P8";
-        NodeType[NodeType[","] = 28] = ",";
-        NodeType[NodeType["P9"] = 29] = "P9";
+        NodeType[NodeType["("] = 1] = "(";
+        NodeType[NodeType["."] = 2] = ".";
+        NodeType[NodeType["P1"] = 3] = "P1";
+        NodeType[NodeType["!"] = 4] = "!";
+        NodeType[NodeType["P2"] = 5] = "P2";
+        NodeType[NodeType["**"] = 6] = "**";
+        NodeType[NodeType["P3"] = 7] = "P3";
+        NodeType[NodeType["*"] = 8] = "*";
+        NodeType[NodeType["/"] = 9] = "/";
+        NodeType[NodeType["%"] = 10] = "%";
+        NodeType[NodeType["P4"] = 11] = "P4";
+        NodeType[NodeType["+"] = 12] = "+";
+        NodeType[NodeType["-"] = 13] = "-";
+        NodeType[NodeType["P5"] = 14] = "P5";
+        NodeType[NodeType[">"] = 15] = ">";
+        NodeType[NodeType["<"] = 16] = "<";
+        NodeType[NodeType[">="] = 17] = ">=";
+        NodeType[NodeType["<="] = 18] = "<=";
+        NodeType[NodeType["P6"] = 19] = "P6";
+        NodeType[NodeType["!="] = 20] = "!=";
+        NodeType[NodeType["=="] = 21] = "==";
+        NodeType[NodeType["P7"] = 22] = "P7";
+        NodeType[NodeType["&&"] = 23] = "&&";
+        NodeType[NodeType["||"] = 24] = "||";
+        NodeType[NodeType["P8"] = 25] = "P8";
+        NodeType[NodeType[","] = 26] = ",";
+        NodeType[NodeType["P9"] = 27] = "P9";
+        NodeType[NodeType["]"] = 28] = "]";
+        NodeType[NodeType[")"] = 29] = ")";
+        NodeType[NodeType["P10"] = 30] = "P10";
         //值
-        NodeType[NodeType["number"] = 30] = "number";
-        NodeType[NodeType["word"] = 31] = "word";
-        NodeType[NodeType["string"] = 32] = "string";
-        NodeType[NodeType["boolean"] = 33] = "boolean";
+        NodeType[NodeType["number"] = 31] = "number";
+        NodeType[NodeType["word"] = 32] = "word";
+        NodeType[NodeType["string"] = 33] = "string";
+        NodeType[NodeType["boolean"] = 34] = "boolean";
         //组合，只会在AST中出现
-        NodeType[NodeType["()"] = 34] = "()";
         NodeType[NodeType["[]"] = 35] = "[]";
         NodeType[NodeType["function"] = 36] = "function";
     })(NodeType = vm.NodeType || (vm.NodeType = {}));
@@ -520,14 +520,6 @@ var vm;
             //2、读取运算符
             //3、读取右值，如果右值右边的运算符顺序>当前运算符，则递归读取右边完整的值
             //4、最终形成可直接执行的树
-            var error = (op, v) => {
-                if (v) {
-                    throw `语法错误，${expression}，运算符'${NodeType[op.type]}'无法与'${NodeType[v.type]}'${v.value}匹配。`;
-                }
-                else {
-                    throw `语法错误，${expression}，运算符'${NodeType[op.type]}'无法合适的左值或右值`;
-                }
-            };
             var getPN = (op) => {
                 if (op.type < NodeType.P1) {
                     return NodeType.P1;
@@ -555,6 +547,9 @@ var vm;
                 }
                 else if (op.type < NodeType.P9) {
                     return NodeType.P9;
+                }
+                else if (op.type < NodeType.P10) {
+                    return NodeType.P10;
                 }
                 else {
                     throw "目标不是运算符" + NodeType[op.type] + " " + String(op.value);
@@ -585,10 +580,21 @@ var vm;
                         currentNode = newNode;
                     }
                 };
+                let joinNode = (node) => {
+                    if (currentNode == null) {
+                        currentNode = node;
+                    }
+                    else {
+                        node.left = currentNode;
+                        currentNode = node;
+                    }
+                };
                 let maxCount = 10000;
                 let count = 0;
-                while (currentPos >= endPos && count < maxCount) {
-                    count++;
+                while (currentPos <= endPos) {
+                    if (count++ >= maxCount) {
+                        throw "死循环";
+                    }
                     let left = nodeList[currentPos];
                     if (left.type < NodeType.P9) {
                         //一开始就是运算符，直接计算返回
@@ -633,8 +639,9 @@ var vm;
                             if (next == null || next.type != NodeType[")"]) {
                                 throw "语法错误，" + expression + "，缺少闭合符号 ')'";
                             }
-                            linkNode(null, NodeType["()"], r.node);
-                            currentPos = r.pos + 1; //跳过]
+                            // linkNode(null, NodeType["()"], r.node);
+                            joinNode(r.node);
+                            currentPos = r.pos;
                         }
                         else if (left.type == NodeType["["]) {
                             let r = startRead(currentPos + 1);
@@ -643,7 +650,7 @@ var vm;
                                 throw "语法错误，" + expression + "，缺少闭合符号 ']'";
                             }
                             linkNode(null, NodeType["[]"], r.node);
-                            currentPos = r.pos + 1; //跳过]
+                            currentPos = r.pos;
                         }
                         else {
                             throw "语法错误，" + expression + "，无法匹配的运算符 '" + NodeType[left.type] + "' ";
@@ -653,6 +660,9 @@ var vm;
                         let op = nodeList[currentPos + 1];
                         if (op == null) {
                             break; //已经结束
+                        }
+                        if (op.type > NodeType.P9 && op.type < NodeType.P10) {
+                            break; //已结束
                         }
                         if (op.type > NodeType.P9) {
                             throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[op.type] + "' ";
@@ -667,7 +677,7 @@ var vm;
                                 //无参函数
                                 let fun = new ASTNode(name, NodeType.function, []);
                                 linkNode(left, op.type, fun);
-                                currentPos += 3;
+                                currentPos += 2;
                                 continue;
                             }
                             else {
@@ -684,7 +694,7 @@ var vm;
                                 }
                                 let fun = new ASTNode(name, NodeType.function, parList);
                                 linkNode(left, op.type, fun);
-                                currentPos = r.pos + 1;
+                                currentPos = r.pos;
                                 continue;
                             }
                         }
@@ -706,7 +716,7 @@ var vm;
                         else {
                             //验证优先级
                             let right2 = nodeList[currentPos + 3];
-                            if (right2 != null && right2.type > NodeType.P9) {
+                            if (right2 != null && right2.type > NodeType.P10) {
                                 throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' ";
                             }
                             if (right2 != null && getPN(right2) < getPN(op)) {
@@ -722,9 +732,6 @@ var vm;
                             }
                         }
                     }
-                }
-                if (count >= maxCount) {
-                    throw "死循环";
                 }
                 return { node: currentNode, pos: currentPos + 1 };
             };

@@ -13,7 +13,7 @@ namespace vm {
 
     export enum NodeType {
         //运算符
-        "[", "]", "(", ")", ".", P1,
+        "[", "(", ".", P1,
         "!", P2,
         "**", P3,
         "*", "/", "%", P4,
@@ -23,6 +23,8 @@ namespace vm {
         "&&", "||", P8,
         ",", P9,
 
+        "]", ")", P10,//结束符号
+
         //值
         "number",
         "word",
@@ -30,7 +32,7 @@ namespace vm {
         "boolean",
 
         //组合，只会在AST中出现
-        "()", "[]",
+        "[]",
         "function"
 
     }
@@ -184,14 +186,6 @@ namespace vm {
             //3、读取右值，如果右值右边的运算符顺序>当前运算符，则递归读取右边完整的值
             //4、最终形成可直接执行的树
 
-            var error = (op: WordNode, v?: WordNode) => {
-                if (v) {
-                    throw `语法错误，${expression}，运算符'${NodeType[op.type]}'无法与'${NodeType[v.type]}'${v.value}匹配。`
-                } else {
-                    throw `语法错误，${expression}，运算符'${NodeType[op.type]}'无法合适的左值或右值`
-                }
-            }
-
             var getPN = (op: WordNode) => {
                 if (op.type < NodeType.P1) {
                     return NodeType.P1
@@ -211,6 +205,8 @@ namespace vm {
                     return NodeType.P8
                 } else if (op.type < NodeType.P9) {
                     return NodeType.P9
+                } else if (op.type < NodeType.P10) {
+                    return NodeType.P10
                 } else {
                     throw "目标不是运算符" + NodeType[op.type] + " " + String(op.value);
                 }
@@ -242,11 +238,21 @@ namespace vm {
                         currentNode = newNode;
                     }
                 }
+                let joinNode = (node: ASTNode) => {
+                    if (currentNode == null) {
+                        currentNode = node;
+                    } else {
+                        node.left = currentNode;
+                        currentNode = node;
+                    }
+                }
 
                 let maxCount = 10000
                 let count = 0;
-                while (currentPos >= endPos && count < maxCount) {
-                    count++;
+                while (currentPos <= endPos) {
+                    if (count++ >= maxCount) {
+                        throw "死循环"
+                    }
                     let left = nodeList[currentPos];
                     if (left.type < NodeType.P9) {
                         //一开始就是运算符，直接计算返回
@@ -288,8 +294,9 @@ namespace vm {
                             if (next == null || next.type != NodeType[")"]) {
                                 throw "语法错误，" + expression + "，缺少闭合符号 ')'"
                             }
-                            linkNode(null, NodeType["()"], r.node);
-                            currentPos = r.pos + 1;//跳过]
+                            // linkNode(null, NodeType["()"], r.node);
+                            joinNode(r.node)
+                            currentPos = r.pos;
 
                         } else if (left.type == NodeType["["]) {
                             let r = startRead(currentPos + 1)
@@ -298,7 +305,7 @@ namespace vm {
                                 throw "语法错误，" + expression + "，缺少闭合符号 ']'"
                             }
                             linkNode(null, NodeType["[]"], r.node);
-                            currentPos = r.pos + 1;//跳过]
+                            currentPos = r.pos;
                         } else {
                             throw "语法错误，" + expression + "，无法匹配的运算符 '" + NodeType[left.type] + "' "
                         }
@@ -307,6 +314,10 @@ namespace vm {
                         if (op == null) {
                             break;//已经结束
                         }
+                        if (op.type > NodeType.P9 && op.type < NodeType.P10) {
+                            break;//已结束
+                        }
+
                         if (op.type > NodeType.P9) {
                             throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[op.type] + "' "
                         }
@@ -321,7 +332,7 @@ namespace vm {
                                 //无参函数
                                 let fun = new ASTNode(name, NodeType.function, []);
                                 linkNode(left, op.type, fun);
-                                currentPos += 3;
+                                currentPos += 2;
                                 continue;
                             } else {
                                 //开始读取参数
@@ -337,7 +348,7 @@ namespace vm {
                                 }
                                 let fun = new ASTNode(name, NodeType.function, parList);
                                 linkNode(left, op.type, fun);
-                                currentPos = r.pos + 1;
+                                currentPos = r.pos;
                                 continue;
                             }
 
@@ -359,7 +370,7 @@ namespace vm {
                         } else {
                             //验证优先级
                             let right2 = nodeList[currentPos + 3];
-                            if (right2 != null && right2.type > NodeType.P9) {
+                            if (right2 != null && right2.type > NodeType.P10) {
                                 throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' "
                             }
                             if (right2 != null && getPN(right2) < getPN(op)) {
@@ -374,9 +385,6 @@ namespace vm {
                             }
                         }
                     }
-                }
-                if (count >= maxCount) {
-                    throw "死循环"
                 }
                 return { node: currentNode!, pos: currentPos + 1 }
             }

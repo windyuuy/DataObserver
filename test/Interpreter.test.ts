@@ -102,3 +102,73 @@ test("词法分析", () => {
 
 
 })
+
+test("语法分析", () => {
+
+    //最简单的情况
+    var nodeList = vm.Interpreter.toWords("a +  b - c")
+    var tree = vm.Interpreter.toAST(nodeList, "a +  b - c")
+    expect(tree.operator).toBe(vm.NodeType["-"])
+    expect((tree.right as any).type).toBe(vm.NodeType.word)
+    expect((tree.right as any).value).toBe("c")
+    expect((tree.left as any).operator).toBe(vm.NodeType["+"])
+    expect((tree.left as any).left.type).toBe(vm.NodeType.word)
+    expect((tree.left as any).left.value).toBe("a")
+    expect((tree.left as any).right.type).toBe(vm.NodeType.word)
+    expect((tree.left as any).right.value).toBe("b")
+
+    //包含括号
+    var nodeList = vm.Interpreter.toWords("(a +  b) * c")
+    var tree = vm.Interpreter.toAST(nodeList, "(a +  b) * c")
+    expect(tree.operator).toBe(vm.NodeType["*"])
+    expect((tree.right as any).type).toBe(vm.NodeType.word)
+    expect((tree.right as any).value).toBe("c")
+    expect((tree.left as any).operator).toBe(vm.NodeType["+"])
+    expect((tree.left as any).left.type).toBe(vm.NodeType.word)
+    expect((tree.left as any).left.value).toBe("a")
+    expect((tree.left as any).right.type).toBe(vm.NodeType.word)
+    expect((tree.left as any).right.value).toBe("b")
+
+    //先后顺序
+    var nodeList = vm.Interpreter.toWords("a +  b * c")
+    var tree = vm.Interpreter.toAST(nodeList, "a +  b * c")
+    expect(tree.operator).toBe(vm.NodeType["+"])
+    expect((tree.left as any).type).toBe(vm.NodeType.word)
+    expect((tree.left as any).value).toBe("a")
+    expect((tree.right as any).operator).toBe(vm.NodeType["*"])
+    expect((tree.right as any).left.type).toBe(vm.NodeType.word)
+    expect((tree.right as any).left.value).toBe("b")
+    expect((tree.right as any).right.type).toBe(vm.NodeType.word)
+    expect((tree.right as any).right.value).toBe("c")
+
+    //属性访问
+    var nodeList = vm.Interpreter.toWords("a.b.c +  b.b.c * c.b.c")
+    var tree = vm.Interpreter.toAST(nodeList, "a.b.c +  b.b.c * c.b.c")
+    expect(tree.operator).toBe(vm.NodeType["+"])
+    expect((tree.left as any).operator).toBe(vm.NodeType["."])
+    expect((tree.left as any).right.value).toBe("c")
+    expect((tree.left as any).left.operator).toBe(vm.NodeType["."])
+    expect((tree.left as any).left.left.value).toBe("a")
+    expect((tree.left as any).left.right.value).toBe("b")
+    expect((tree.right as any).operator).toBe(vm.NodeType["*"])
+    expect((tree.right as any).left.operator).toBe(vm.NodeType["."])
+    expect((tree.right as any).left.right.value).toBe("c")
+    expect((tree.right as any).left.left.operator).toBe(vm.NodeType["."])
+    expect((tree.right as any).left.left.left.value).toBe("b")
+    expect((tree.right as any).left.left.right.value).toBe("b")
+    expect((tree.right as any).right.operator).toBe(vm.NodeType["."])
+    expect((tree.right as any).right.right.value).toBe("c")
+    expect((tree.right as any).right.left.operator).toBe(vm.NodeType["."])
+    expect((tree.right as any).right.left.left.value).toBe("c")
+    expect((tree.right as any).right.left.right.value).toBe("b")
+
+    console.log(tree)
+
+    //中括号访问
+
+    //！运算符
+
+    //函数调用
+
+
+})
