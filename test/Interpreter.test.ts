@@ -236,7 +236,24 @@ test("语法分析", () => {
     expect((tree.right as any).right.left.right.value).toBe("b")
 
     //！运算符
+    var nodeList = vm.Interpreter.toWords("!a")
+    var tree = vm.Interpreter.toAST(nodeList, "!a")
+    expect(tree.operator).toBe(vm.NodeType["!"])
+    expect((tree.right as any).value).toBe("a")
 
+    var nodeList = vm.Interpreter.toWords("!(!a)")
+    var tree = vm.Interpreter.toAST(nodeList, "!(!a)")
+    expect(tree.operator).toBe(vm.NodeType["!"])
+    expect((tree.right as any).operator).toBe(vm.NodeType["!"])
+    expect((tree.right as any).right.value).toBe("a")
+
+    var nodeList = vm.Interpreter.toWords("!(a >= !b)")
+    var tree = vm.Interpreter.toAST(nodeList, "!(a >= !b)")
+    expect(tree.operator).toBe(vm.NodeType["!"])
+    expect((tree.right as any).operator).toBe(vm.NodeType[">="])
+    expect((tree.right as any).left.value).toBe("a")
+    expect((tree.right as any).right.operator).toBe(vm.NodeType["!"])
+    expect((tree.right as any).right.right.value).toBe("b")
     //函数调用
 
 

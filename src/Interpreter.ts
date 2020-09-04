@@ -287,7 +287,7 @@ namespace vm {
                             } else {
                                 //验证优先级
                                 let right2 = nodeList[currentPos + 2];
-                                if (right2 != null && right2.type > NodeType.P9) {
+                                if (right2 != null && right2.type > NodeType.P10) {
                                     throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' "
                                 }
                                 if (right2 != null && getPN(right2) < getPN(left)) {
@@ -298,7 +298,7 @@ namespace vm {
                                 } else {
                                     //从左到右的顺序
                                     linkNode(null, left.type, right);
-                                    currentPos = currentPos + 2;
+                                    currentPos = currentPos + 1;
                                 }
                             }
 
@@ -328,6 +328,9 @@ namespace vm {
                         if (op == null || op.type > NodeType.P9 && op.type < NodeType.P10) {
                             //left依然要输出
                             linkNode(left, left.type, null);
+                            if (op != null) {
+                                currentPos += 1;
+                            }
                             break;//已结束
                         }
 
@@ -412,7 +415,7 @@ namespace vm {
                         }
                     }
                 }
-                return { node: currentNode!, pos: currentPos + 1 }
+                return { node: currentNode!, pos: currentPos }
             }
 
             return startRead(0).node;
