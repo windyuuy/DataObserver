@@ -1,6 +1,12 @@
 import "../dist/data-observer"
 
 test("词法分析", () => {
+    var nodeList = vm.Interpreter.toWords("true false")
+    expect(nodeList[0].type).toEqual(vm.NodeType.boolean)
+    expect(nodeList[0].value).toEqual(true)
+    expect(nodeList[1].type).toEqual(vm.NodeType.boolean)
+    expect(nodeList[1].value).toEqual(false)
+
     var nodeList = vm.Interpreter.toWords("a +  b - c")
     expect(nodeList[0].type).toEqual(vm.NodeType.word)
     expect(nodeList[0].value).toEqual("a")
@@ -105,6 +111,29 @@ test("词法分析", () => {
 
 test("语法分析", () => {
 
+    //单个值
+    var nodeList = vm.Interpreter.toWords("a")
+    var tree = vm.Interpreter.toAST(nodeList, "a")
+    expect(tree.operator).toBe(vm.NodeType.word)
+    expect((tree.left as any).type).toBe(vm.NodeType.word)
+    expect((tree.left as any).value).toBe("a")
+    var nodeList = vm.Interpreter.toWords("'a'")
+    var tree = vm.Interpreter.toAST(nodeList, "a")
+    expect(tree.operator).toBe(vm.NodeType.string)
+    expect((tree.left as any).type).toBe(vm.NodeType.string)
+    expect((tree.left as any).value).toBe("a")
+    var nodeList = vm.Interpreter.toWords("100.4")
+    var tree = vm.Interpreter.toAST(nodeList, "100.4")
+    expect(tree.operator).toBe(vm.NodeType.number)
+    expect((tree.left as any).type).toBe(vm.NodeType.number)
+    expect((tree.left as any).value).toBe(100.4)
+    var nodeList = vm.Interpreter.toWords("true")
+    var tree = vm.Interpreter.toAST(nodeList, "true")
+    expect(tree.operator).toBe(vm.NodeType.boolean)
+    expect((tree.left as any).type).toBe(vm.NodeType.boolean)
+    expect((tree.left as any).value).toBe(true)
+
+
     //最简单的情况
     var nodeList = vm.Interpreter.toWords("a +  b - c")
     var tree = vm.Interpreter.toAST(nodeList, "a +  b - c")
@@ -162,9 +191,35 @@ test("语法分析", () => {
     expect((tree.right as any).right.left.left.value).toBe("c")
     expect((tree.right as any).right.left.right.value).toBe("b")
 
-    console.log(tree)
+
+    //简单中括号访问
+    var nodeList = vm.Interpreter.toWords("a['c'] +  b")
+    var tree = vm.Interpreter.toAST(nodeList, "a['c'] +  b")
+    expect(tree.operator).toBe(vm.NodeType["+"])
+    expect((tree.right as any).type).toBe(vm.NodeType.word)
+    expect((tree.right as any).value).toBe("b")
+
 
     //中括号访问
+    var nodeList = vm.Interpreter.toWords("a.b['c'] +  b.['b']['c'] * c.b.c")
+    var tree = vm.Interpreter.toAST(nodeList, "a.b['c'] +  b.['b']['c'] * c.b.c")
+    expect(tree.operator).toBe(vm.NodeType["+"])
+    expect((tree.left as any).operator).toBe(vm.NodeType["."])
+    expect((tree.left as any).right.value).toBe("c")
+    expect((tree.left as any).left.operator).toBe(vm.NodeType["."])
+    expect((tree.left as any).left.left.value).toBe("a")
+    expect((tree.left as any).left.right.value).toBe("b")
+    expect((tree.right as any).operator).toBe(vm.NodeType["*"])
+    expect((tree.right as any).left.operator).toBe(vm.NodeType["."])
+    expect((tree.right as any).left.right.value).toBe("c")
+    expect((tree.right as any).left.left.operator).toBe(vm.NodeType["."])
+    expect((tree.right as any).left.left.left.value).toBe("b")
+    expect((tree.right as any).left.left.right.value).toBe("b")
+    expect((tree.right as any).right.operator).toBe(vm.NodeType["."])
+    expect((tree.right as any).right.right.value).toBe("c")
+    expect((tree.right as any).right.left.operator).toBe(vm.NodeType["."])
+    expect((tree.right as any).right.left.left.value).toBe("c")
+    expect((tree.right as any).right.left.right.value).toBe("b")
 
     //！运算符
 

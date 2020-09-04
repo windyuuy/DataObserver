@@ -157,8 +157,7 @@ declare namespace vm {
         "word" = 32,
         "string" = 33,
         "boolean" = 34,
-        "[]" = 35,
-        "function" = 36
+        "function" = 35
     }
     class WordNode {
         type: NodeType;
@@ -168,9 +167,9 @@ declare namespace vm {
     class ASTNode {
         left: ASTNode | WordNode | null;
         operator: NodeType;
-        right: ASTNode | WordNode | ASTNode[];
+        right: ASTNode | WordNode | ASTNode[] | null;
         constructor(left: ASTNode | WordNode | null, //一元运算符允许为空
-        operator: NodeType, right: ASTNode | WordNode | ASTNode[]);
+        operator: NodeType, right: ASTNode | WordNode | ASTNode[] | null);
     }
     export class Interpreter {
         environment: {

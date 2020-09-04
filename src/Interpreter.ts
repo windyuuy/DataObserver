@@ -32,7 +32,6 @@ namespace vm {
         "boolean",
 
         //组合，只会在AST中出现
-        "[]",
         "function"
 
     }
@@ -48,7 +47,7 @@ namespace vm {
         constructor(
             public left: ASTNode | WordNode | null,//一元运算符允许为空
             public operator: NodeType,
-            public right: ASTNode | WordNode | ASTNode[],//如果是函数调用会是一个列表
+            public right: ASTNode | WordNode | ASTNode[] | null,//如果是函数调用会是一个列表
         ) { }
     }
 
@@ -69,7 +68,7 @@ namespace vm {
     })
 
     const spaceMap: { [key: string]: boolean } = {};
-    [" ", "\n", "\r", "\t", "\s"].forEach(a => spaceMap[a] = true)
+    [" ", "\n", "\r", "\t"].forEach(a => spaceMap[a] = true)
 
     export class Interpreter {
 
@@ -161,7 +160,11 @@ namespace vm {
                 } else if (state == 4) {
                     //单词
                     if (spaceMap[char] || operatorCharMap[char] || markMap[char]) {
-                        nodeList.push(new WordNode(NodeType.word, temp))
+                        if (temp == "true" || temp == "false") {
+                            nodeList.push(new WordNode(NodeType.boolean, temp == "true"))
+                        } else {
+                            nodeList.push(new WordNode(NodeType.word, temp))
+                        }
                         reset();
                         run(char);//重新执行
                     } else {
@@ -230,7 +233,10 @@ namespace vm {
 
                 let currentNode: ASTNode;
 
-                let linkNode = (left: ASTNode | WordNode | null, op: NodeType, right: ASTNode | WordNode | ASTNode[]) => {
+                let linkNode = (left: ASTNode | WordNode | null, op: NodeType, right: ASTNode | WordNode | ASTNode[] | null) => {
+                    if (currentNode != null && right == null) {
+                        return;//right为空则表示单值，不应该记录
+                    }
                     if (currentNode == null) {
                         currentNode = new ASTNode(left, op, right);
                     } else {
@@ -304,17 +310,16 @@ namespace vm {
                             if (next == null || next.type != NodeType["]"]) {
                                 throw "语法错误，" + expression + "，缺少闭合符号 ']'"
                             }
-                            linkNode(null, NodeType["[]"], r.node);
+                            joinNode(r.node);
                             currentPos = r.pos;
                         } else {
                             throw "语法错误，" + expression + "，无法匹配的运算符 '" + NodeType[left.type] + "' "
                         }
                     } else {
                         let op = nodeList[currentPos + 1];
-                        if (op == null) {
-                            break;//已经结束
-                        }
-                        if (op.type > NodeType.P9 && op.type < NodeType.P10) {
+                        if (op == null || op.type > NodeType.P9 && op.type < NodeType.P10) {
+                            //left依然要输出
+                            linkNode(left, left.type, null);
                             break;//已结束
                         }
 
@@ -333,7 +338,6 @@ namespace vm {
                                 let fun = new ASTNode(name, NodeType.function, []);
                                 linkNode(left, op.type, fun);
                                 currentPos += 2;
-                                continue;
                             } else {
                                 //开始读取参数
                                 let parList: ASTNode[] = [];
@@ -349,9 +353,23 @@ namespace vm {
                                 let fun = new ASTNode(name, NodeType.function, parList);
                                 linkNode(left, op.type, fun);
                                 currentPos = r.pos;
-                                continue;
                             }
-
+                            continue;
+                        } else if (op.type == NodeType["["]) {
+                            //属性访问
+                            let right2 = nodeList[currentPos + 2];
+                            if (right2 == null) {
+                                throw "语法错误，" + expression + "，属性访问调用缺少右括号 ";
+                            } else if (right2.type == NodeType["]"]) {
+                                throw "语法错误，" + expression + "，[]中必须传入访问变量 ";
+                            }
+                            let r = startRead(currentPos + 2)//读取括号里的内容
+                            if (nodeList[r.pos] == null || nodeList[r.pos].type != NodeType["]"]) {
+                                throw "语法错误，" + expression + "，属性访问调用缺少右括号 ";
+                            }
+                            linkNode(left, NodeType["."], r.node);
+                            currentPos = r.pos;
+                            continue;
                         }
 
                         let right = nodeList[currentPos + 2];
