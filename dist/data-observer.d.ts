@@ -165,6 +165,13 @@ declare namespace vm {
         value: any;
         constructor(type: NodeType, value: any);
     }
+    class ASTNode {
+        left: ASTNode | WordNode | null;
+        operator: NodeType;
+        right: ASTNode | WordNode | ASTNode[];
+        constructor(left: ASTNode | WordNode | null, //一元运算符允许为空
+        operator: NodeType, right: ASTNode | WordNode | ASTNode[]);
+    }
     export class Interpreter {
         environment: {
             [key: string]: any;
@@ -174,7 +181,7 @@ declare namespace vm {
             [key: string]: any;
         }, expression: string);
         static toWords(expression: string): WordNode[];
-        static toAST(nodeList: WordNode[], expression: string): any;
+        static toAST(nodeList: WordNode[], expression: string): ASTNode;
         run(data: any): any;
     }
     /**

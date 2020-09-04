@@ -216,92 +216,172 @@ namespace vm {
                 }
             }
 
-            //永远都是从左往右读取
-            var read = (/*运算符的位置*/pos: number): ASTNode | undefined => {
-                let op = nodeList[pos];
+            /**
+             * 解析的起点，此时会产生左值，并向下持续链接。
+             * 一般为：
+             * 1. 语句的一开始 例如： a+b+c 的 a
+             * 2. 运算符优先级的一开始 例如： a+b*c+d 的 b
+             * 3. 括号内的一开始 例如 a*(b+c) 的 b
+             * 4. 函数调用参数的一开始，例如 a(b+c,d+e) 中的 b 和 d
+             * 
+             * 所有需要重新开始的地方都应该调用该函数
+             * 
+             * 计算后返回ASTNode和新的开始点
+             */
+            var startRead = (/*左值的位置，既开始位置*/pos: number): { pos: number, node: ASTNode } => {
+                let currentPos = pos;
+                let endPos = nodeList.length - 1;
 
-                if (op.type < NodeType.P9) {
-                    throw "请确保read函数传入的是运算符" + NodeType[op.type] + " " + String(op.value);
+                let currentNode: ASTNode;
+
+                let linkNode = (left: ASTNode | WordNode | null, op: NodeType, right: ASTNode | WordNode | ASTNode[]) => {
+                    if (currentNode == null) {
+                        currentNode = new ASTNode(left, op, right);
+                    } else {
+                        var newNode = new ASTNode(currentNode, op, right);
+                        currentNode = newNode;
+                    }
                 }
 
-                if (op.type == NodeType["("]) {
-                    //读取括号
-                    let left = nodeList[pos - 1];
-                    if (left && (left.type == NodeType.word || left.type == NodeType[")"] || left.type == NodeType["]"])) {
-                        //左边的为函数调用
-                    } else {
-                        //仅仅只是一个组合
-                        return loopRead(pos + 1);
-                    }
-
-                } else if (op.type == NodeType["["]) {
-
-                } else if (op.type == NodeType["!"]) {
-                    //一元运算符
-                    let right = nodeList[pos + 1];
-                    if (right == null) {
-                        error(op);
-                    }
-                    if (right.type < NodeType.P9) {
-                        //是运算符,且只可能是括号，否则肯定不正常
-                        if (right.type == NodeType["("]) {
-                            return new ASTNode(null, op.type, loopRead(pos + 1));
-                        } else {
-                            error(op, right);
-                        }
-                    } else {
-                        //值
-                        if (right.type == NodeType.string) {
-                            error(op, right);//叹号后面怎么能是字符串
-                        }
-
-                        //验证right2
-                        let right2 = nodeList[pos + 2];
-                        if (right2 && right2.type < NodeType.P1) {
-                            //优先right2,如果是(则有可能是函数调用
-                            return new ASTNode(null, op.type, read(pos + 2)!);
-                        } else {
-                            //直接返回
-                            return new ASTNode(null, op.type, right);
-                        }
-                    }
-
-                } else {
-                    //二元运算符
-                    let left = nodeList[pos - 1];
-                    let right = nodeList[pos + 1];
-
+                let maxCount = 10000
+                let count = 0;
+                while (currentPos >= endPos && count < maxCount) {
+                    count++;
+                    let left = nodeList[currentPos];
                     if (left.type < NodeType.P9) {
-                        //左值不可以是运算符
-                        error(op, left)
-                    }
+                        //一开始就是运算符，直接计算返回
+                        if (left.type == NodeType["!"]) {
+                            let right = nodeList[currentPos + 1]
+                            if (right == null) {
+                                throw "语法错误，" + expression + "，无法找到运算符右值 '" + NodeType[left.type] + "' "
+                            }
+                            if (right.type < NodeType.P9) {
+                                //右值也是运算符
+                                if (right.type == NodeType["("]) {
+                                    let r = startRead(currentPos + 1)
+                                    linkNode(null, NodeType["!"], r.node)
+                                    currentPos = r.pos;
+                                } else {
+                                    throw "语法错误，" + expression + "，运算符'" + NodeType[left.type] + "'的右值不合理，竟然是 '" + NodeType[right.type] + "' ";
+                                }
+                            } else {
+                                //验证优先级
+                                let right2 = nodeList[currentPos + 2];
+                                if (right2 != null && right2.type > NodeType.P9) {
+                                    throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' "
+                                }
+                                if (right2 != null && getPN(right2) < getPN(left)) {
+                                    //右侧运算符优先
+                                    var r = startRead(currentPos + 1);
+                                    linkNode(null, left.type, r.node);
+                                    currentPos = r.pos;
+                                } else {
+                                    //从左到右的顺序
+                                    linkNode(null, left.type, right);
+                                    currentPos = currentPos + 2;
+                                }
+                            }
 
-                    if (right.type < NodeType.P9) {
-                        //是运算符,且只可能是括号，否则肯定不正常
-                        if (right.type == NodeType["("]) {
-                            return new ASTNode(null, op.type, loopRead(pos + 1));
+                        } else if (left.type == NodeType["("]) {
+                            let r = startRead(currentPos + 1)
+                            let next = nodeList[r.pos];
+                            if (next == null || next.type != NodeType[")"]) {
+                                throw "语法错误，" + expression + "，缺少闭合符号 ')'"
+                            }
+                            linkNode(null, NodeType["()"], r.node);
+                            currentPos = r.pos + 1;//跳过]
+
+                        } else if (left.type == NodeType["["]) {
+                            let r = startRead(currentPos + 1)
+                            let next = nodeList[r.pos];
+                            if (next == null || next.type != NodeType["]"]) {
+                                throw "语法错误，" + expression + "，缺少闭合符号 ']'"
+                            }
+                            linkNode(null, NodeType["[]"], r.node);
+                            currentPos = r.pos + 1;//跳过]
                         } else {
-                            error(op, right);
+                            throw "语法错误，" + expression + "，无法匹配的运算符 '" + NodeType[left.type] + "' "
                         }
                     } else {
-                        //验证right2
-                        let right2 = nodeList[pos + 2];
-                        if (right2 && right2.type < NodeType.P9 && getPN(right2) < getPN(op)) {
-                            //优先右侧
-                            return new ASTNode(left, op.type, read(pos + 2)!);
+                        let op = nodeList[currentPos + 1];
+                        if (op == null) {
+                            break;//已经结束
+                        }
+                        if (op.type > NodeType.P9) {
+                            throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[op.type] + "' "
+                        }
+
+                        if (op.type == NodeType["("]) {
+                            //函数调用
+                            let right2 = nodeList[currentPos + 2];
+                            if (right2 == null) {
+                                throw "语法错误，" + expression + "，函数调用缺少右括号 "
+                            }
+                            if (right2.type == NodeType[")"]) {
+                                //无参函数
+                                let fun = new ASTNode(name, NodeType.function, []);
+                                linkNode(left, op.type, fun);
+                                currentPos += 3;
+                                continue;
+                            } else {
+                                //开始读取参数
+                                let parList: ASTNode[] = [];
+                                let r = startRead(currentPos + 2)//读取括号里的内容
+                                parList.push(r.node);
+                                while (nodeList[r.pos] && nodeList[r.pos].type == NodeType[","]) {
+                                    r = startRead(r.pos + 1)//读取括号里的内容
+                                    parList.push(r.node);
+                                }
+                                if (nodeList[r.pos] == undefined || nodeList[r.pos].type != NodeType[")"]) {
+                                    throw "语法错误，" + expression + "，缺少闭合符号 ')'"
+                                }
+                                let fun = new ASTNode(name, NodeType.function, parList);
+                                linkNode(left, op.type, fun);
+                                currentPos = r.pos + 1;
+                                continue;
+                            }
+
+                        }
+
+                        let right = nodeList[currentPos + 2];
+                        if (right == null) {
+                            throw "语法错误，" + expression + "，无法找到运算符右值 '" + NodeType[op.type] + "' "
+                        }
+                        if (right.type < NodeType.P9) {
+                            //右值也是运算符
+                            if (right.type == NodeType["!"] || right.type == NodeType["("] || right.type == NodeType["["]) {
+                                let r = startRead(currentPos + 2)
+                                linkNode(left, op.type, r.node)
+                                currentPos = r.pos;
+                            } else {
+                                throw "语法错误，" + expression + "，运算符'" + NodeType[op.type] + "'的右值不合理，竟然是 '" + NodeType[right.type] + "' ";
+                            }
                         } else {
-                            //直接返回
-                            return new ASTNode(left, op.type, right);
+                            //验证优先级
+                            let right2 = nodeList[currentPos + 3];
+                            if (right2 != null && right2.type > NodeType.P9) {
+                                throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' "
+                            }
+                            if (right2 != null && getPN(right2) < getPN(op)) {
+                                //右侧运算符优先
+                                var r = startRead(currentPos + 2);
+                                linkNode(left, op.type, r.node);
+                                currentPos = r.pos;
+                            } else {
+                                //从左到右的顺序
+                                linkNode(left, op.type, right);
+                                currentPos = currentPos + 2;
+                            }
                         }
                     }
                 }
+                if (count >= maxCount) {
+                    throw "死循环"
+                }
+                return { node: currentNode!, pos: currentPos + 1 }
             }
 
-            var loopRead = (/*开始循环的位置*/pos: number) => {
-                return new NodeType()
-            }
-
-            return loopRead(0);
+            return startRead(0).node;
         }
 
         run(data: any): any {
