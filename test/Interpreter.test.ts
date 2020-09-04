@@ -198,11 +198,25 @@ test("语法分析", () => {
     expect(tree.operator).toBe(vm.NodeType["+"])
     expect((tree.right as any).type).toBe(vm.NodeType.word)
     expect((tree.right as any).value).toBe("b")
+    expect((tree.left as any).operator).toBe(vm.NodeType["."])
+    expect((tree.left as any).left.value).toBe("a")
+    expect((tree.left as any).right.value).toBe("c")
+
+    var nodeList = vm.Interpreter.toWords("a['c']['d'] +  b")
+    var tree = vm.Interpreter.toAST(nodeList, "a['c']['d'] +  b")
+    expect(tree.operator).toBe(vm.NodeType["+"])
+    expect((tree.right as any).type).toBe(vm.NodeType.word)
+    expect((tree.right as any).value).toBe("b")
+    expect((tree.left as any).operator).toBe(vm.NodeType["."])
+    expect((tree.left as any).right.value).toBe("d")
+    expect((tree.left as any).left.operator).toBe(vm.NodeType["."])
+    expect((tree.left as any).left.left.value).toBe("a")
+    expect((tree.left as any).left.right.value).toBe("c")
 
 
     //中括号访问
-    var nodeList = vm.Interpreter.toWords("a.b['c'] +  b.['b']['c'] * c.b.c")
-    var tree = vm.Interpreter.toAST(nodeList, "a.b['c'] +  b.['b']['c'] * c.b.c")
+    var nodeList = vm.Interpreter.toWords("a.b['c'] +  b['b']['c'] * c.b.c")
+    var tree = vm.Interpreter.toAST(nodeList, "a.b['c'] +  b['b']['c'] * c.b.c")
     expect(tree.operator).toBe(vm.NodeType["+"])
     expect((tree.left as any).operator).toBe(vm.NodeType["."])
     expect((tree.left as any).right.value).toBe("c")

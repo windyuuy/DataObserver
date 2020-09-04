@@ -238,9 +238,17 @@ namespace vm {
                         return;//right为空则表示单值，不应该记录
                     }
                     if (currentNode == null) {
-                        currentNode = new ASTNode(left, op, right);
+                        if (right instanceof ASTNode && right.right == null) {
+                            currentNode = new ASTNode(left, op, right.left);
+                        } else {
+                            currentNode = new ASTNode(left, op, right);
+                        }
                     } else {
-                        var newNode = new ASTNode(currentNode, op, right);
+                        if (right instanceof ASTNode && right.right == null) {
+                            var newNode = new ASTNode(currentNode, op, right.left);
+                        } else {
+                            var newNode = new ASTNode(currentNode, op, right);
+                        }
                         currentNode = newNode;
                     }
                 }
