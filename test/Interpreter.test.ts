@@ -254,7 +254,43 @@ test("语法分析", () => {
     expect((tree.right as any).left.value).toBe("a")
     expect((tree.right as any).right.operator).toBe(vm.NodeType["!"])
     expect((tree.right as any).right.right.value).toBe("b")
+
+
     //函数调用
+    var nodeList = vm.Interpreter.toWords("a()")
+    var tree = vm.Interpreter.toAST(nodeList, "a()")
+    expect(tree.operator).toBe(vm.NodeType.function)
+    expect((tree.left as any).value).toBe("a")
+    expect((tree.right as any)).toBeInstanceOf(Array)
+
+    var nodeList = vm.Interpreter.toWords("a(b)")
+    var tree = vm.Interpreter.toAST(nodeList, "a(b)")
+    expect(tree.operator).toBe(vm.NodeType.function)
+    expect((tree.left as any).value).toBe("a")
+    expect((tree.right as any)).toBeInstanceOf(Array)
+    expect((tree.right as any)[0].value).toBe("b")
+
+    var nodeList = vm.Interpreter.toWords("a(b,c,d)")
+    var tree = vm.Interpreter.toAST(nodeList, "a(b,c,d)")
+    expect(tree.operator).toBe(vm.NodeType.function)
+    expect((tree.left as any).value).toBe("a")
+    expect((tree.right as any)).toBeInstanceOf(Array)
+    expect((tree.right as any)[0].value).toBe("b")
+    expect((tree.right as any)[1].value).toBe("c")
+    expect((tree.right as any)[2].value).toBe("d")
+
+    var nodeList = vm.Interpreter.toWords("a(b1+b2,'c',d-1)")
+    var tree = vm.Interpreter.toAST(nodeList, "a(b1+b2,'c',d-1)")
+    expect(tree.operator).toBe(vm.NodeType.function)
+    expect((tree.left as any).value).toBe("a")
+    expect((tree.right as any)).toBeInstanceOf(Array)
+    expect((tree.right as any)[0].operator).toBe(vm.NodeType["+"])
+    expect((tree.right as any)[0].left.value).toBe("b1")
+    expect((tree.right as any)[0].right.value).toBe("b2")
+    expect((tree.right as any)[1].value).toBe("c")
+    expect((tree.right as any)[2].operator).toBe(vm.NodeType["-"])
+    expect((tree.right as any)[2].left.value).toBe("d")
+    expect((tree.right as any)[2].right.value).toBe(1)
 
 
 })

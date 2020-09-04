@@ -325,7 +325,7 @@ namespace vm {
                         }
                     } else {
                         let op = nodeList[currentPos + 1];
-                        if (op == null || op.type > NodeType.P9 && op.type < NodeType.P10) {
+                        if (op == null || op.type > NodeType.P9 && op.type < NodeType.P10 || op.type == NodeType[","]) {
                             //left依然要输出
                             linkNode(left, left.type, null);
                             if (op != null) {
@@ -346,23 +346,21 @@ namespace vm {
                             }
                             if (right2.type == NodeType[")"]) {
                                 //无参函数
-                                let fun = new ASTNode(name, NodeType.function, []);
-                                linkNode(left, op.type, fun);
+                                linkNode(left, NodeType.function, []);
                                 currentPos += 2;
                             } else {
                                 //开始读取参数
                                 let parList: ASTNode[] = [];
                                 let r = startRead(currentPos + 2)//读取括号里的内容
-                                parList.push(r.node);
+                                parList.push(r.node.right ? r.node : r.node.left as any);
                                 while (nodeList[r.pos] && nodeList[r.pos].type == NodeType[","]) {
                                     r = startRead(r.pos + 1)//读取括号里的内容
-                                    parList.push(r.node);
+                                    parList.push(r.node.right ? r.node : r.node.left as any);
                                 }
                                 if (nodeList[r.pos] == undefined || nodeList[r.pos].type != NodeType[")"]) {
                                     throw "语法错误，" + expression + "，缺少闭合符号 ')'"
                                 }
-                                let fun = new ASTNode(name, NodeType.function, parList);
-                                linkNode(left, op.type, fun);
+                                linkNode(left, NodeType.function, parList);
                                 currentPos = r.pos;
                             }
                             continue;
