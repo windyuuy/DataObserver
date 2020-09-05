@@ -294,3 +294,38 @@ test("语法分析", () => {
 
 
 })
+
+test("语法分析 复杂", () => {
+
+    var nodeList = vm.Interpreter.toWords('cc.lib.format("玩家等级 %d Lv",100)')
+    var tree = vm.Interpreter.toAST(nodeList, 'cc.lib.format("玩家等级 %d Lv",100)')
+    expect(tree.operator).toBe(vm.NodeType.function)
+    expect((tree.left as any).operator).toBe(vm.NodeType["."])
+    expect((tree.left as any).left.left.value).toBe("cc")
+    expect((tree.left as any).left.right.value).toBe("lib")
+    expect((tree.left as any).right.value).toBe("format")
+    expect((tree.right as any)).toBeInstanceOf(Array)
+    expect((tree.right as any)[0].value).toBe("玩家等级 %d Lv")
+    expect((tree.right as any)[1].value).toBe(100)
+
+
+    var nodeList = vm.Interpreter.toWords('a/(b)+c')
+    var tree = vm.Interpreter.toAST(nodeList, 'a/(b)+c')
+    expect(tree.operator).toBe(vm.NodeType["+"])
+    expect((tree.left as any).operator).toBe(vm.NodeType["/"])
+    expect((tree.left as any).left.value).toBe("a")
+    expect((tree.left as any).right.value).toBe("b")
+    expect((tree.right as any).value).toBe("c")
+
+
+    var nodeList = vm.Interpreter.toWords('Min(1,暴击/(暴击+韧性)*(LvA*2/(LvA+LvB))')
+    var tree = vm.Interpreter.toAST(nodeList, 'Min(1,暴击/(暴击+韧性)*(LvA*2/(LvA+LvB))')
+    expect(tree.operator).toBe(vm.NodeType.function)
+    expect((tree.left as any).value).toBe("Min")
+    expect((tree.right as any).length).toBe(2)
+    expect((tree.right as any)[0].value).toBe(1)
+    expect((tree.right as any)[1].operator).toBe(vm.NodeType["*"])
+
+
+
+})

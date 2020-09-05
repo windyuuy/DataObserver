@@ -227,7 +227,7 @@ namespace vm {
              * 
              * 计算后返回ASTNode和新的开始点
              */
-            var startRead = (/*左值的位置，既开始位置*/pos: number): { pos: number, node: ASTNode } => {
+            var startRead = (/*左值的位置，既开始位置*/pos: number, isRoot: boolean = false): { pos: number, node: ASTNode } => {
                 let currentPos = pos;
                 let endPos = nodeList.length - 1;
 
@@ -308,9 +308,11 @@ namespace vm {
                             if (next == null || next.type != NodeType[")"]) {
                                 throw "语法错误，" + expression + "，缺少闭合符号 ')'"
                             }
-                            // linkNode(null, NodeType["()"], r.node);
                             joinNode(r.node)
                             currentPos = r.pos;
+                            if (!isRoot) {
+                                break;
+                            }
 
                         } else if (left.type == NodeType["["]) {
                             let r = startRead(currentPos + 1)
@@ -320,6 +322,9 @@ namespace vm {
                             }
                             joinNode(r.node);
                             currentPos = r.pos;
+                            if (!isRoot) {
+                                break;
+                            }
                         } else {
                             throw "语法错误，" + expression + "，无法匹配的运算符 '" + NodeType[left.type] + "' "
                         }
@@ -416,8 +421,28 @@ namespace vm {
                 return { node: currentNode!, pos: currentPos }
             }
 
-            return startRead(0).node;
+            return startRead(0, true).node;
         }
+
+        static toStringAST(ast: ASTNode | WordNode | ASTNode[]): string {
+            if (ast instanceof ASTNode) {
+                if (ast.operator == NodeType.function) {
+                    return `(${this.toStringAST(ast.left!)}(${this.toStringAST(ast.right!)}))`
+                } else if (ast.left == null) {
+                    return `(${NodeType[ast.operator]} ${this.toStringAST(ast.right!)})`
+                } else if (ast.right == null) {
+                    return `(${this.toStringAST(ast.left)})`
+                } else {
+                    return `(${this.toStringAST(ast.left)} ${NodeType[ast.operator]} ${this.toStringAST(ast.right)})`
+                }
+            } else if (ast instanceof WordNode) {
+                return ast.type == NodeType.string ? `"${ast.value}"` : `${ast.value}`
+            } else if (ast instanceof Array) {
+                return ast.map(a => this.toStringAST(a)).join(",")
+            }
+            return "error"
+        }
+
 
         run(data: any): any {
 

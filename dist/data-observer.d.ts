@@ -181,6 +181,7 @@ declare namespace vm {
         }, expression: string);
         static toWords(expression: string): WordNode[];
         static toAST(nodeList: WordNode[], expression: string): ASTNode;
+        static toStringAST(ast: ASTNode | WordNode | ASTNode[]): string;
         run(data: any): any;
     }
     /**
