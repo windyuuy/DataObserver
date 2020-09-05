@@ -33,6 +33,9 @@ namespace vm {
             //防止产生枚举
             def(this, "$watchers", []);
             def(this, "$isDestroyed", false);
+
+            //实现基础方法，用于表达式中方便得调用
+            implementEnvironment(this);
         }
 
         $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void) {
@@ -67,6 +70,9 @@ namespace vm {
         def(obj, "$isDestroyed", false);
         def(obj, "$watch", Host.prototype.$watch);
         def(obj, "$destroy", Host.prototype.$destroy);
+
+        //实现基础方法，用于表达式中方便得调用
+        implementEnvironment(obj);
 
         observe(obj);
         return obj as any;

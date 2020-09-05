@@ -169,6 +169,7 @@ test("watch注解", () => {
     var view = {
         testString: "",
         testNum: 0,
+        testNum2: 0,
         newValue: ""
     }
 
@@ -192,6 +193,12 @@ test("watch注解", () => {
             view.testNum = newVal
         }
 
+        @vm.watch("a.tstNumber + a.subObj.tstNumber")
+        onTestNumber2Change(newVal: number, oldVal: number) {
+            view.testNum2 = newVal
+        }
+
+
         get newTestString() {
             return this.a.testString + "666"
         }
@@ -212,6 +219,7 @@ test("watch注解", () => {
 
     expect(view.testString).toBe("哈哈哈")
     expect(view.testNum).toBe(13)
+    expect(view.testNum2).toBe(13)
     expect(view.newValue).toBe("哈哈哈666")
 
 })

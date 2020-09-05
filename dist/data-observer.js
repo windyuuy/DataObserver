@@ -80,6 +80,8 @@ var vm;
             //防止产生枚举
             vm.def(this, "$watchers", []);
             vm.def(this, "$isDestroyed", false);
+            //实现基础方法，用于表达式中方便得调用
+            vm.implementEnvironment(this);
         }
         $watch(expOrFn, cb) {
             if (this.$isDestroyed) {
@@ -111,6 +113,8 @@ var vm;
         vm.def(obj, "$isDestroyed", false);
         vm.def(obj, "$watch", Host.prototype.$watch);
         vm.def(obj, "$destroy", Host.prototype.$destroy);
+        //实现基础方法，用于表达式中方便得调用
+        vm.implementEnvironment(obj);
         vm.observe(obj);
         return obj;
     }
@@ -278,18 +282,25 @@ var vm;
      */
     function parsePath(path) {
         if (bailRE.test(path)) {
-            return;
+            //复杂表达式
+            var i = new vm.Interpreter(path);
+            return function (env) {
+                return i.run(env);
+            };
         }
-        var segments = path.split('.');
-        return function (obj) {
-            for (var i = 0; i < segments.length; i++) {
-                if (!obj) {
-                    return;
+        else {
+            //简单的.属性访问逻辑
+            var segments = path.split('.');
+            return function (obj) {
+                for (var i = 0; i < segments.length; i++) {
+                    if (!obj) {
+                        return;
+                    }
+                    obj = obj[segments[i]];
                 }
-                obj = obj[segments[i]];
-            }
-            return obj;
-        };
+                return obj;
+            };
+        }
     }
     vm.parsePath = parsePath;
     function isNative(Ctor) {

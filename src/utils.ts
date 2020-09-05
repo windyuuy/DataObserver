@@ -78,15 +78,21 @@ namespace vm {
      */
     export function parsePath(path: string): ((obj: any) => any) | undefined {
         if (bailRE.test(path)) {
-            return
-        }
-        var segments = path.split('.');
-        return function (obj: any) {
-            for (var i = 0; i < segments.length; i++) {
-                if (!obj) { return }
-                obj = obj[segments[i]];
+            //复杂表达式
+            var i = new Interpreter(path)
+            return function (env: any) {
+                return i.run(env);
             }
-            return obj
+        } else {
+            //简单的.属性访问逻辑
+            var segments = path.split('.');
+            return function (obj: any) {
+                for (var i = 0; i < segments.length; i++) {
+                    if (!obj) { return }
+                    obj = obj[segments[i]];
+                }
+                return obj
+            }
         }
     }
 
