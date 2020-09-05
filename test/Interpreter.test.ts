@@ -325,7 +325,17 @@ test("语法分析 复杂", () => {
     expect((tree.right as any).length).toBe(2)
     expect((tree.right as any)[0].value).toBe(1)
     expect((tree.right as any)[1].operator).toBe(vm.NodeType["*"])
-
-
+    expect((tree.right as any)[1].left.operator).toBe(vm.NodeType["/"])
+    expect((tree.right as any)[1].left.left.value).toBe("暴击")
+    expect((tree.right as any)[1].left.right.operator).toBe(vm.NodeType["+"])
+    expect((tree.right as any)[1].left.right.left.value).toBe("暴击")
+    expect((tree.right as any)[1].left.right.right.value).toBe("韧性")
+    expect((tree.right as any)[1].right.operator).toBe(vm.NodeType["/"])
+    expect((tree.right as any)[1].right.left.operator).toBe(vm.NodeType["*"])
+    expect((tree.right as any)[1].right.left.left.value).toBe("LvA")
+    expect((tree.right as any)[1].right.left.right.value).toBe(2)
+    expect((tree.right as any)[1].right.right.operator).toBe(vm.NodeType["+"])
+    expect((tree.right as any)[1].right.right.left.value).toBe("LvA")
+    expect((tree.right as any)[1].right.right.right.value).toBe("LvB")
 
 })
