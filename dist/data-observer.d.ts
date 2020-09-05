@@ -172,24 +172,31 @@ declare namespace vm {
         operator: NodeType, right: ASTNode | WordNode | ASTNode[] | null);
     }
     export class Interpreter {
-        environment: {
-            [key: string]: any;
-        };
         expression: string;
-        constructor(environment: {
-            [key: string]: any;
-        }, expression: string);
+        ast: ASTNode;
+        constructor(expression: string);
         static toWords(expression: string): WordNode[];
         static toAST(nodeList: WordNode[], expression: string): ASTNode;
         static toStringAST(ast: ASTNode | WordNode | ASTNode[]): string;
-        run(data: any): any;
+        toString(): string;
+        run(environment: {
+            [key: string]: any;
+        }): any;
     }
     /**
-     * 当前环境列表
+     * 基础环境
      */
     export var environment: {
         [key: string]: any;
     };
+    /**
+     * 继承自基础属性
+     */
+    export function extendsEnvironment(obj: any): void;
+    /**
+     * 向目标对象实现所有基础属性
+     */
+    export function implementEnvironment(obj: any): any;
     export {};
 }
 declare namespace vm {

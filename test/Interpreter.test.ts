@@ -339,3 +339,101 @@ test("语法分析 复杂", () => {
     expect((tree.right as any)[1].right.right.right.value).toBe("LvB")
 
 })
+
+test("环境测试", () => {
+    expect(vm.environment["MIN"](1, 2)).toBe(1)
+    expect(vm.environment.PI).toBe(Math.PI);
+
+    var a: any = {}
+    vm.extendsEnvironment(a);
+    expect(a["MIN"](1, 2)).toBe(1)
+    expect(a.PI).toBe(Math.PI);
+    expect(Object.keys(a).length).toBe(0);
+
+    var b: any = { a: 1 }
+    vm.implementEnvironment(b);
+    expect(b["MIN"](1, 2)).toBe(1)
+    expect(b.PI).toBe(Math.PI);
+    expect(Object.keys(b).length).toBe(1);
+
+})
+
+test("表达式运行测试", () => {
+    var exp = new vm.Interpreter("MIN(100*2,200+100,300/2)")
+    expect(exp.run(vm.environment)).toBe(150);
+
+    var evn = {
+        a: 100,
+        b: 200,
+        c: 300
+    }
+    vm.extendsEnvironment(evn);
+    var exp = new vm.Interpreter("a+b+c")
+    expect(exp.run(evn)).toBe(600)
+
+
+    var evn2 = {
+        local: {
+            a: 100,
+            b: 200,
+            c: 300
+        }
+    }
+    vm.extendsEnvironment(evn2);
+    var exp = new vm.Interpreter("local.a+local.b+local.c")
+    expect(exp.run(evn2)).toBe(600)
+
+    var evn3 = {
+        haha: {
+            local: {
+                a: 100,
+                b: 200,
+                c: 300
+            }
+        }
+    }
+    vm.extendsEnvironment(evn3);
+    var exp = new vm.Interpreter("haha.local.a+haha.local.b+haha.local.c")
+    expect(exp.run(evn3)).toBe(600)
+
+
+    var evn4 = {
+        Math: Math,
+        haha: {
+            local: {
+                a: 100,
+                b: 200,
+                c: 300,
+                Math: Math
+            }
+        }
+    }
+    vm.extendsEnvironment(evn4);
+    var exp = new vm.Interpreter("Math.max( haha.local.a,haha.local.b,haha.local.c)")
+    expect(exp.run(evn4)).toBe(300)
+
+    class Obj {
+        x: number = 100;
+
+        add(obj: Obj) {
+            return this.x + obj.x
+        }
+    }
+
+    var evn5 = {
+        a: new Obj(),
+        b: {
+            c: new Obj()
+        }
+    }
+    vm.extendsEnvironment(evn5);
+    var exp = new vm.Interpreter("b.c.add(a)")
+    expect(exp.run(evn5)).toBe(200)
+    var exp = new vm.Interpreter("a.add(b.c)")
+    expect(exp.run(evn5)).toBe(200)
+    var exp = new vm.Interpreter("'abcd'.length")
+    expect(exp.run(evn5)).toBe(4)
+    var exp = new vm.Interpreter("'ab,cd'.split(',')")
+    expect(exp.run(evn5).length).toBe(2)
+
+})

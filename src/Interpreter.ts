@@ -72,13 +72,13 @@ namespace vm {
 
     export class Interpreter {
 
+        ast: ASTNode;
 
         constructor(
-            public environment: { [key: string]: any },
             public expression: string
         ) {
 
-            Interpreter.toAST(Interpreter.toWords(this.expression), this.expression);
+            this.ast = Interpreter.toAST(Interpreter.toWords(this.expression), this.expression);
         }
 
         static toWords(expression: string) {
@@ -443,15 +443,135 @@ namespace vm {
             return "error"
         }
 
+        toString() {
+            return Interpreter.toStringAST(this.ast);
+        }
 
-        run(data: any): any {
+        run(environment: { [key: string]: any }): any {
+            var runLogic = (ast: WordNode | ASTNode | null): any => {
+                if (!ast) {
+                    return null;
+                }
+                if (ast instanceof ASTNode) {
+                    switch (ast.operator) {
+                        case NodeType["."]:
+                            let left: any;
+                            if (ast.left instanceof WordNode) {
+                                if (ast.left.type == NodeType.word) {
+                                    left = environment[ast.left.value]
+                                } else {
+                                    left = ast.left.value;
+                                }
+                            } else {
+                                left = runLogic(ast.left)
+                            }
+                            let rightWord: string
+                            if (ast.right instanceof WordNode) {
+                                rightWord = ast.right.value;
+                            } else {
+                                rightWord = runLogic(ast.right as any)
+                            }
+                            return left[rightWord];
+                        case NodeType["!"]:
+                            return !runLogic(ast.right as any)
+                        case NodeType["**"]:
+                            return runLogic(ast.left) ** runLogic(ast.right as any)
+                        case NodeType["*"]:
+                            return runLogic(ast.left) * runLogic(ast.right as any);
+                        case NodeType["/"]:
+                            return runLogic(ast.left) / runLogic(ast.right as any)
+                        case NodeType["%"]:
+                            return runLogic(ast.left) % runLogic(ast.right as any)
+                        case NodeType["+"]:
+                            return runLogic(ast.left) + runLogic(ast.right as any)
+                        case NodeType["-"]:
+                            return runLogic(ast.left) - runLogic(ast.right as any)
+                        case NodeType[">"]:
+                            return runLogic(ast.left) > runLogic(ast.right as any)
+                        case NodeType["<"]:
+                            return runLogic(ast.left) < runLogic(ast.right as any)
+                        case NodeType[">="]:
+                            return runLogic(ast.left) >= runLogic(ast.right as any)
+                        case NodeType["<="]:
+                            return runLogic(ast.left) <= runLogic(ast.right as any)
+                        case NodeType["!="]:
+                            return runLogic(ast.left) != runLogic(ast.right as any)
+                        case NodeType["=="]:
+                            return runLogic(ast.left) == runLogic(ast.right as any)
+                        case NodeType["&&"]:
+                            return runLogic(ast.left) && runLogic(ast.right as any)
+                        case NodeType["||"]:
+                            return runLogic(ast.left) || runLogic(ast.right as any)
+                        case NodeType["word"]:
+                        case NodeType["number"]:
+                        case NodeType["string"]:
+                        case NodeType["boolean"]:
+                            return runLogic(ast.left)
+                        case NodeType["function"]:
+                            let self: any;
+                            let target: any;
+                            if (ast.left instanceof ASTNode) {
+                                self = runLogic(ast.left.left);
 
+                                let rightWord: any;
+                                if (ast.left.right instanceof WordNode) {
+                                    rightWord = ast.left.right.value;
+                                }
+                                else {
+                                    rightWord = runLogic(ast.left.right as any);
+                                }
+
+                                target = self[rightWord];
+                            } else {
+                                target = runLogic(ast.left);
+                            }
+                            let func: Function
+                            if (typeof target == "function") {
+                                func = target;
+                            } else {
+                                func = environment[target];
+                            }
+                            let paramList = [];
+                            for (let p of ast.right as ASTNode[]) {
+                                paramList.push(runLogic(p));
+                            }
+                            return func.apply(self || environment, paramList);
+                    }
+                } else if (ast instanceof WordNode) {
+                    if (ast.type == NodeType.word) {
+                        return environment[ast.value];
+                    }
+                    return ast.value;
+                }
+                throw "AST异常" + JSON.stringify(ast);
+            }
+            return runLogic(this.ast);
         }
     }
 
     /**
-     * 当前环境列表
+     * 基础环境
      */
     export var environment: { [key: string]: any } = {}
-    environment["Math"] = Math;//数学库
+
+    //加入数学基础库
+    Object.getOwnPropertyNames(Math).forEach(k => def(environment, k.toUpperCase(), (Math as any)[k]));
+
+    /**
+     * 继承自基础属性
+     */
+    export function extendsEnvironment(obj: any) {
+        obj.__proto__ = environment;
+    }
+
+    /**
+     * 向目标对象实现所有基础属性
+     */
+    export function implementEnvironment(obj: any) {
+        let ks = Object.getOwnPropertyNames(environment);
+        for (let k of ks) {
+            def(obj, k, environment[k]);
+        }
+        return obj;
+    }
 }
