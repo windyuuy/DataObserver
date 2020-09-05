@@ -359,6 +359,23 @@ test("环境测试", () => {
 })
 
 test("表达式运行测试", () => {
+
+    expect(new vm.Interpreter("!false").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("3**2").run(vm.environment)).toBe(9);
+    expect(new vm.Interpreter("3*2").run(vm.environment)).toBe(6);
+    expect(new vm.Interpreter("3/2").run(vm.environment)).toBe(1.5);
+    expect(new vm.Interpreter("3%2").run(vm.environment)).toBe(1);
+    expect(new vm.Interpreter("11+12").run(vm.environment)).toBe(23);
+    expect(new vm.Interpreter("11-12").run(vm.environment)).toBe(-1);
+    expect(new vm.Interpreter("11>12").run(vm.environment)).toBe(false);
+    expect(new vm.Interpreter("11<12").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("11>=11").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("11<=11").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("12!=11").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("12==11").run(vm.environment)).toBe(false);
+    expect(new vm.Interpreter("12>11 && 11<15").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("12>11 || 11>15").run(vm.environment)).toBe(true);
+
     var exp = new vm.Interpreter("MIN(100*2,200+100,300/2)")
     expect(exp.run(vm.environment)).toBe(150);
 
