@@ -5,9 +5,9 @@ var vm;
     /**
      * 递归遍历数组，进行ob对象的依赖记录。
      */
-    function dependArray(value) {
+    function dependArray (value) {
         var obj = null;
-        for (let i = 0, l = value.length; i < l; i++) {
+        for (var i = 0, l = value.length; i < l; i++) {
             obj = value[i];
             if (obj && obj.__ob__) {
                 obj.__ob__.dep.depend();
@@ -18,8 +18,8 @@ var vm;
         }
     }
     vm.dependArray = dependArray;
-    class Dep {
-        constructor() {
+    var Dep = /** @class */ (function () {
+        function Dep () {
             /**
              * 唯一id，方便hashmap判断是否存在
              */
@@ -29,83 +29,99 @@ var vm;
              */
             this.watchers = [];
         }
-        static pushCollectTarget(target) {
+        Dep.pushCollectTarget = function (target) {
             this.collectTargetStack.push(target);
             Dep.target = target;
-        }
-        static popCollectTarget() {
+        };
+        Dep.popCollectTarget = function () {
             this.collectTargetStack.pop();
             Dep.target = this.collectTargetStack[this.collectTargetStack.length - 1];
-        }
-        add(sub) {
+        };
+        Dep.prototype.add = function (sub) {
             this.watchers.push(sub);
-        }
+        };
         /*移除一个观察者对象*/
-        remove(sub) {
+        Dep.prototype.remove = function (sub) {
             vm.remove(this.watchers, sub);
-        }
+        };
         /**
          * 收集依赖
          */
-        depend() {
+        Dep.prototype.depend = function () {
             if (Dep.target) {
                 // Dep.target指向的是一个watcher
                 Dep.target.addDep(this);
             }
-        }
+        };
         /**
          * 通知所有侦听者
          */
-        notify() {
-            const ws = this.watchers.slice();
-            for (let i = 0, l = ws.length; i < l; i++) {
+        Dep.prototype.notify = function () {
+            var ws = this.watchers.slice();
+            for (var i = 0, l = ws.length; i < l; i++) {
                 ws[i].update();
             }
-        }
-    }
-    /**
-     * 当前正在收集依赖的对象
-     */
-    Dep.target = null;
-    /**
-     * 当前正在收集以来的列队
-     */
-    Dep.collectTargetStack = [];
+        };
+        /**
+         * 当前正在收集依赖的对象
+         */
+        Dep.target = null;
+        /**
+         * 当前正在收集以来的列队
+         */
+        Dep.collectTargetStack = [];
+        return Dep;
+    }());
     vm.Dep = Dep;
 })(vm || (vm = {}));
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __ () { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 var vm;
 (function (vm) {
-    class Host {
-        constructor() {
+    var Host = /** @class */ (function () {
+        function Host () {
             //防止产生枚举
             vm.def(this, "$watchers", []);
             vm.def(this, "$isDestroyed", false);
             //实现基础方法，用于表达式中方便得调用
             vm.implementEnvironment(this);
         }
-        $watch(expOrFn, cb) {
+        Host.prototype.$watch = function (expOrFn, cb) {
             if (this.$isDestroyed) {
                 console.error("the host is destroyed", this);
                 return;
             }
-            let watcher = new vm.Watcher(this, expOrFn, cb);
+            var watcher = new vm.Watcher(this, expOrFn, cb);
             this.$watchers.push(watcher);
             return watcher;
-        }
-        $destroy() {
+        };
+        Host.prototype.$destroy = function () {
             var temp = this.$watchers;
             this.$watchers = [];
-            for (let w of temp) {
+            for (var _i = 0, temp_1 = temp; _i < temp_1.length; _i++) {
+                var w = temp_1[_i];
                 w.teardown();
             }
             this.$isDestroyed = true;
-        }
-    }
+        };
+        return Host;
+    }());
     vm.Host = Host;
     /**
      * 向普通对象注入Host相关方法
      */
-    function implementHost(obj) {
+    function implementHost (obj) {
         if (vm.hasOwn(obj, "$watchers")) {
             return obj;
         }
@@ -125,7 +141,7 @@ var vm;
      * @param key
      * @param value
      */
-    function set(target, key, val) {
+    function set (target, key, val) {
         if (vm.isUndef(target) || vm.isPrimitive(target)) {
             console.warn(("无法设置属性到 undefined, null, 或 primitive 值: " + ((target))));
             return;
@@ -154,7 +170,7 @@ var vm;
      * @param target 对象，也可以是数组
      * @param key
      */
-    function del(target, key) {
+    function del (target, key) {
         if (vm.isUndef(target) || vm.isPrimitive(target)) {
             console.warn(("无法删除属性到 undefined, null, 或 primitive 值: " + ((target))));
             return;
@@ -178,53 +194,57 @@ var vm;
      * 注解，标注当前侦听的变量或表达式
      * @param expOrFn 路径或取值函数
      */
-    function watch(expOrFn) {
+    function watch (expOrFn) {
         return function (target, propertyKey, descriptor) {
             if (!vm.hasOwn(target, "$watchAnnotations")) {
                 target["$watchAnnotations"] = [];
             }
             var list = target["$watchAnnotations"];
             var cb = target[propertyKey];
-            list.push({ expOrFn, cb });
+            list.push({ expOrFn: expOrFn, cb: cb });
         };
     }
     vm.watch = watch;
     /**
      * 注解，标注当前需要访问的类
      */
-    function host(constructor) {
-        return class extends constructor {
-            constructor() {
-                super();
-                vm.observe(this);
-                var list = this.__proto__["$watchAnnotations"];
+    function host (constructor) {
+        return /** @class */ (function (_super) {
+            __extends(class_1, _super);
+            function class_1 () {
+                var _this = _super.call(this) || this;
+                vm.observe(_this);
+                var list = _this.__proto__["$watchAnnotations"];
                 if (list != null) {
-                    for (let w of list) {
-                        this.$watch(w.expOrFn, w.cb.bind(this));
+                    for (var _i = 0, list_1 = list; _i < list_1.length; _i++) {
+                        var w = list_1[_i];
+                        _this.$watch(w.expOrFn, w.cb.bind(_this));
                     }
                 }
+                return _this;
             }
-        };
+            return class_1;
+        }(constructor));
     }
     vm.host = host;
 })(vm || (vm = {}));
 var vm;
 (function (vm) {
-    const _toString = Object.prototype.toString;
-    const hasOwnProperty = Object.prototype.hasOwnProperty;
-    function isObject(obj) {
+    var _toString = Object.prototype.toString;
+    var hasOwnProperty = Object.prototype.hasOwnProperty;
+    function isObject (obj) {
         return obj !== null && typeof obj === 'object';
     }
     vm.isObject = isObject;
-    function hasOwn(obj, key) {
+    function hasOwn (obj, key) {
         return hasOwnProperty.call(obj, key);
     }
     vm.hasOwn = hasOwn;
-    function isPlainObject(obj) {
+    function isPlainObject (obj) {
         return _toString.call(obj) === '[object Object]';
     }
     vm.isPlainObject = isPlainObject;
-    function def(obj, key, val, enumerable) {
+    function def (obj, key, val, enumerable) {
         Object.defineProperty(obj, key, {
             value: val,
             enumerable: !!enumerable,
@@ -233,26 +253,26 @@ var vm;
         });
     }
     vm.def = def;
-    function isUndef(v) {
+    function isUndef (v) {
         return v === undefined || v === null;
     }
     vm.isUndef = isUndef;
-    function isDef(v) {
+    function isDef (v) {
         return v !== undefined && v !== null;
     }
     vm.isDef = isDef;
-    function isTrue(v) {
+    function isTrue (v) {
         return v === true;
     }
     vm.isTrue = isTrue;
-    function isFalse(v) {
+    function isFalse (v) {
         return v === false;
     }
     vm.isFalse = isFalse;
     /**
      * 判断是否为单纯的数据类型
      */
-    function isPrimitive(value) {
+    function isPrimitive (value) {
         return (typeof value === 'string' ||
             typeof value === 'number' ||
             // $flow-disable-line
@@ -260,12 +280,12 @@ var vm;
             typeof value === 'boolean');
     }
     vm.isPrimitive = isPrimitive;
-    function isValidArrayIndex(val) {
+    function isValidArrayIndex (val) {
         var n = parseFloat(String(val));
         return n >= 0 && Math.floor(n) === n && isFinite(val);
     }
     vm.isValidArrayIndex = isValidArrayIndex;
-    function remove(arr, item) {
+    function remove (arr, item) {
         if (arr.length) {
             var index = arr.indexOf(item);
             if (index > -1) {
@@ -274,13 +294,13 @@ var vm;
         }
     }
     vm.remove = remove;
-    const unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD/;
-    const bailRE = new RegExp("[^" + (unicodeRegExp.source) + ".$_\\d]");
+    var unicodeRegExp = /a-zA-Z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F-\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD/;
+    var bailRE = new RegExp("[^" + (unicodeRegExp.source) + ".$_\\d]");
     /**
      * 讲使用.分隔的路径访问转换为函数。
      * @param path
      */
-    function parsePath(path) {
+    function parsePath (path) {
         if (bailRE.test(path)) {
             //复杂表达式
             var i = new vm.Interpreter(path);
@@ -303,7 +323,7 @@ var vm;
         }
     }
     vm.parsePath = parsePath;
-    function isNative(Ctor) {
+    function isNative (Ctor) {
         return typeof Ctor === 'function' && /native code/.test(Ctor.toString());
     }
     vm.isNative = isNative;
@@ -316,27 +336,28 @@ var vm;
         _Set = Set;
     }
     else {
-        class _IdMap {
-            constructor() {
+        var _IdMap = /** @class */ (function () {
+            function _IdMap () {
                 this.set = Object.create(null);
             }
-            has(key) {
+            _IdMap.prototype.has = function (key) {
                 return this.set[key] === true;
-            }
-            add(key) {
+            };
+            _IdMap.prototype.add = function (key) {
                 this.set[key] = true;
-            }
-            clear() {
+            };
+            _IdMap.prototype.clear = function () {
                 this.set = Object.create(null);
-            }
-        }
+            };
+            return _IdMap;
+        }());
         _Set = _IdMap;
     }
     vm.IdMap = _Set;
 })(vm || (vm = {}));
 var vm;
 (function (vm) {
-    const symbolList = [
+    var symbolList = [
         "(", ")", "[", "]", ".",
         "!",
         "**",
@@ -347,7 +368,7 @@ var vm;
         "&&", "||",
         ",",
     ];
-    let NodeType;
+    var NodeType;
     (function (NodeType) {
         //运算符
         NodeType[NodeType["["] = 0] = "[";
@@ -389,55 +410,57 @@ var vm;
         //组合，只会在AST中出现
         NodeType[NodeType["function"] = 35] = "function";
     })(NodeType = vm.NodeType || (vm.NodeType = {}));
-    class WordNode {
-        constructor(type, value) {
+    var WordNode = /** @class */ (function () {
+        function WordNode (type, value) {
             this.type = type;
             this.value = value;
         }
-    }
-    class ASTNode {
-        constructor(left, //一元运算符允许为空
-        operator, right) {
+        return WordNode;
+    }());
+    var ASTNode = /** @class */ (function () {
+        function ASTNode (left, //一元运算符允许为空
+            operator, right) {
             this.left = left;
             this.operator = operator;
             this.right = right;
         }
-    }
-    const zeroCode = "0".charCodeAt(0);
-    const nineCode = "9".charCodeAt(0);
-    const operatorCharMap = {};
-    symbolList.forEach(a => operatorCharMap[a.charAt(0)] = true);
-    const markMap = {};
-    ["\"", "'", "`"].forEach(a => markMap[a] = true);
-    const doubleOpMap = {};
-    symbolList.forEach(a => {
+        return ASTNode;
+    }());
+    var zeroCode = "0".charCodeAt(0);
+    var nineCode = "9".charCodeAt(0);
+    var operatorCharMap = {};
+    symbolList.forEach(function (a) { return operatorCharMap[a.charAt(0)] = true; });
+    var markMap = {};
+    ["\"", "'", "`"].forEach(function (a) { return markMap[a] = true; });
+    var doubleOpMap = {};
+    symbolList.forEach(function (a) {
         if (a.length > 1) {
             doubleOpMap[a.charAt(0)] = true;
         }
     });
-    const spaceMap = {};
-    [" ", "\n", "\r", "\t"].forEach(a => spaceMap[a] = true);
-    class Interpreter {
-        constructor(expression) {
+    var spaceMap = {};
+    [" ", "\n", "\r", "\t"].forEach(function (a) { return spaceMap[a] = true; });
+    var Interpreter = /** @class */ (function () {
+        function Interpreter (expression) {
             this.expression = expression;
             this.ast = Interpreter.toAST(Interpreter.toWords(this.expression), this.expression);
         }
-        static toWords(expression) {
+        Interpreter.toWords = function (expression) {
             var temp = "";
             var lastChar = "";
             var state = 0; //0初始状态；1数字；2运算符；3引号字符串；4单词
             var markType;
             var nodeList = [];
-            var reset = () => {
+            var reset = function () {
                 state = 0;
                 temp = '';
             };
-            var run = (char) => {
+            var run = function (char) {
                 if (state == 0) {
                     if (spaceMap[char]) {
                         return;
                     }
-                    let code = char.charCodeAt(0);
+                    var code = char.charCodeAt(0);
                     if (code >= zeroCode && code <= nineCode) {
                         //数字
                         state = 1;
@@ -471,7 +494,7 @@ var vm;
                 }
                 else if (state == 1) {
                     //数字
-                    let code = char.charCodeAt(0);
+                    var code = char.charCodeAt(0);
                     if (code >= zeroCode && code <= nineCode || char == ".") {
                         temp += char;
                     }
@@ -522,19 +545,20 @@ var vm;
                     }
                 }
             };
-            for (const char of expression) {
+            for (var _i = 0, expression_1 = expression; _i < expression_1.length; _i++) {
+                var char = expression_1[_i];
                 run(char);
                 lastChar = char;
             }
             run(" "); //传入空格，使其收集最后的结束点
             return nodeList;
-        }
-        static toAST(nodeList, expression) {
+        };
+        Interpreter.toAST = function (nodeList, expression) {
             //1、读取左值
             //2、读取运算符
             //3、读取右值，如果右值右边的运算符顺序>当前运算符，则递归读取右边完整的值
             //4、最终形成可直接执行的树
-            var getPN = (op) => {
+            var getPN = function (op) {
                 if (op.type < NodeType.P1) {
                     return NodeType.P1;
                 }
@@ -581,11 +605,12 @@ var vm;
              *
              * 计算后返回ASTNode和新的开始点
              */
-            var startRead = (/*左值的位置，既开始位置*/ pos, isRoot = false) => {
-                let currentPos = pos;
-                let endPos = nodeList.length - 1;
-                let currentNode;
-                let linkNode = (left, op, right) => {
+            var startRead = function (/*左值的位置，既开始位置*/ pos, isRoot) {
+                if (isRoot === void 0) { isRoot = false; }
+                var currentPos = pos;
+                var endPos = nodeList.length - 1;
+                var currentNode;
+                var linkNode = function (left, op, right) {
                     if (currentNode != null && right == null) {
                         return; //right为空则表示单值，不应该记录
                     }
@@ -607,7 +632,7 @@ var vm;
                         currentNode = newNode;
                     }
                 };
-                let joinNode = (node) => {
+                var joinNode = function (node) {
                     if (currentNode == null) {
                         currentNode = node;
                     }
@@ -616,26 +641,26 @@ var vm;
                         currentNode = node;
                     }
                 };
-                let maxCount = 10000;
-                let count = 0;
+                var maxCount = 10000;
+                var count = 0;
                 while (currentPos <= endPos) {
                     if (count++ >= maxCount) {
                         throw "死循环";
                     }
-                    let left = nodeList[currentPos];
+                    var left = nodeList[currentPos];
                     if (left.type < NodeType.P9) {
                         //一开始就是运算符，直接计算返回
                         if (left.type == NodeType["!"]) {
-                            let right = nodeList[currentPos + 1];
+                            var right = nodeList[currentPos + 1];
                             if (right == null) {
                                 throw "语法错误，" + expression + "，无法找到运算符右值 '" + NodeType[left.type] + "' ";
                             }
                             if (right.type < NodeType.P9) {
                                 //右值也是运算符
                                 if (right.type == NodeType["("]) {
-                                    let r = startRead(currentPos + 1);
-                                    linkNode(null, NodeType["!"], r.node);
-                                    currentPos = r.pos;
+                                    var r_1 = startRead(currentPos + 1);
+                                    linkNode(null, NodeType["!"], r_1.node);
+                                    currentPos = r_1.pos;
                                 }
                                 else {
                                     throw "语法错误，" + expression + "，运算符'" + NodeType[left.type] + "'的右值不合理，竟然是 '" + NodeType[right.type] + "' ";
@@ -643,7 +668,7 @@ var vm;
                             }
                             else {
                                 //验证优先级
-                                let right2 = nodeList[currentPos + 2];
+                                var right2 = nodeList[currentPos + 2];
                                 if (right2 != null && right2.type > NodeType.P10) {
                                     throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' ";
                                 }
@@ -661,25 +686,25 @@ var vm;
                             }
                         }
                         else if (left.type == NodeType["("]) {
-                            let r = startRead(currentPos + 1);
-                            let next = nodeList[r.pos];
+                            var r_2 = startRead(currentPos + 1);
+                            var next = nodeList[r_2.pos];
                             if (next == null || next.type != NodeType[")"]) {
                                 throw "语法错误，" + expression + "，缺少闭合符号 ')'";
                             }
-                            joinNode(r.node);
-                            currentPos = r.pos;
+                            joinNode(r_2.node);
+                            currentPos = r_2.pos;
                             if (!isRoot) {
                                 break;
                             }
                         }
                         else if (left.type == NodeType["["]) {
-                            let r = startRead(currentPos + 1);
-                            let next = nodeList[r.pos];
+                            var r_3 = startRead(currentPos + 1);
+                            var next = nodeList[r_3.pos];
                             if (next == null || next.type != NodeType["]"]) {
                                 throw "语法错误，" + expression + "，缺少闭合符号 ']'";
                             }
-                            joinNode(r.node);
-                            currentPos = r.pos;
+                            joinNode(r_3.node);
+                            currentPos = r_3.pos;
                             if (!isRoot) {
                                 break;
                             }
@@ -689,7 +714,7 @@ var vm;
                         }
                     }
                     else {
-                        let op = nodeList[currentPos + 1];
+                        var op = nodeList[currentPos + 1];
                         if (op == null || op.type > NodeType.P9 && op.type < NodeType.P10 || op.type == NodeType[","]) {
                             //left依然要输出
                             linkNode(left, left.type, null);
@@ -703,7 +728,7 @@ var vm;
                         }
                         if (op.type == NodeType["("]) {
                             //函数调用
-                            let right2 = nodeList[currentPos + 2];
+                            var right2 = nodeList[currentPos + 2];
                             if (right2 == null) {
                                 throw "语法错误，" + expression + "，函数调用缺少右括号 ";
                             }
@@ -714,48 +739,48 @@ var vm;
                             }
                             else {
                                 //开始读取参数
-                                let parList = [];
-                                let r = startRead(currentPos + 2); //读取括号里的内容
-                                parList.push(r.node.right ? r.node : r.node.left);
-                                while (nodeList[r.pos] && nodeList[r.pos].type == NodeType[","]) {
-                                    r = startRead(r.pos + 1); //读取括号里的内容
-                                    parList.push(r.node.right ? r.node : r.node.left);
+                                var parList = [];
+                                var r_4 = startRead(currentPos + 2); //读取括号里的内容
+                                parList.push(r_4.node.right ? r_4.node : r_4.node.left);
+                                while (nodeList[r_4.pos] && nodeList[r_4.pos].type == NodeType[","]) {
+                                    r_4 = startRead(r_4.pos + 1); //读取括号里的内容
+                                    parList.push(r_4.node.right ? r_4.node : r_4.node.left);
                                 }
-                                if (nodeList[r.pos] == undefined || nodeList[r.pos].type != NodeType[")"]) {
+                                if (nodeList[r_4.pos] == undefined || nodeList[r_4.pos].type != NodeType[")"]) {
                                     throw "语法错误，" + expression + "，缺少闭合符号 ')'";
                                 }
                                 linkNode(left, NodeType.function, parList);
-                                currentPos = r.pos;
+                                currentPos = r_4.pos;
                             }
                             continue;
                         }
                         else if (op.type == NodeType["["]) {
                             //属性访问
-                            let right2 = nodeList[currentPos + 2];
+                            var right2 = nodeList[currentPos + 2];
                             if (right2 == null) {
                                 throw "语法错误，" + expression + "，属性访问调用缺少右括号 ";
                             }
                             else if (right2.type == NodeType["]"]) {
                                 throw "语法错误，" + expression + "，[]中必须传入访问变量 ";
                             }
-                            let r = startRead(currentPos + 2); //读取括号里的内容
-                            if (nodeList[r.pos] == null || nodeList[r.pos].type != NodeType["]"]) {
+                            var r_5 = startRead(currentPos + 2); //读取括号里的内容
+                            if (nodeList[r_5.pos] == null || nodeList[r_5.pos].type != NodeType["]"]) {
                                 throw "语法错误，" + expression + "，属性访问调用缺少右括号 ";
                             }
-                            linkNode(left, NodeType["."], r.node);
-                            currentPos = r.pos;
+                            linkNode(left, NodeType["."], r_5.node);
+                            currentPos = r_5.pos;
                             continue;
                         }
-                        let right = nodeList[currentPos + 2];
+                        var right = nodeList[currentPos + 2];
                         if (right == null) {
                             throw "语法错误，" + expression + "，无法找到运算符右值 '" + NodeType[op.type] + "' ";
                         }
                         if (right.type < NodeType.P9) {
                             //右值也是运算符
                             if (right.type == NodeType["!"] || right.type == NodeType["("] || right.type == NodeType["["]) {
-                                let r = startRead(currentPos + 2);
-                                linkNode(left, op.type, r.node);
-                                currentPos = r.pos;
+                                var r_6 = startRead(currentPos + 2);
+                                linkNode(left, op.type, r_6.node);
+                                currentPos = r_6.pos;
                             }
                             else {
                                 throw "语法错误，" + expression + "，运算符'" + NodeType[op.type] + "'的右值不合理，竟然是 '" + NodeType[right.type] + "' ";
@@ -763,7 +788,7 @@ var vm;
                         }
                         else {
                             //验证优先级
-                            let right2 = nodeList[currentPos + 3];
+                            var right2 = nodeList[currentPos + 3];
                             if (right2 != null && right2.type > NodeType.P10) {
                                 throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' ";
                             }
@@ -784,42 +809,43 @@ var vm;
                 return { node: currentNode, pos: currentPos };
             };
             return startRead(0, true).node;
-        }
-        static toStringAST(ast) {
+        };
+        Interpreter.toStringAST = function (ast) {
+            var _this = this;
             if (ast instanceof ASTNode) {
                 if (ast.operator == NodeType.function) {
-                    return `(${this.toStringAST(ast.left)}(${this.toStringAST(ast.right)}))`;
+                    return "(" + this.toStringAST(ast.left) + "(" + this.toStringAST(ast.right) + "))";
                 }
                 else if (ast.left == null) {
-                    return `(${NodeType[ast.operator]} ${this.toStringAST(ast.right)})`;
+                    return "(" + NodeType[ast.operator] + " " + this.toStringAST(ast.right) + ")";
                 }
                 else if (ast.right == null) {
-                    return `(${this.toStringAST(ast.left)})`;
+                    return "(" + this.toStringAST(ast.left) + ")";
                 }
                 else {
-                    return `(${this.toStringAST(ast.left)} ${NodeType[ast.operator]} ${this.toStringAST(ast.right)})`;
+                    return "(" + this.toStringAST(ast.left) + " " + NodeType[ast.operator] + " " + this.toStringAST(ast.right) + ")";
                 }
             }
             else if (ast instanceof WordNode) {
-                return ast.type == NodeType.string ? `"${ast.value}"` : `${ast.value}`;
+                return ast.type == NodeType.string ? "\"" + ast.value + "\"" : "" + ast.value;
             }
             else if (ast instanceof Array) {
-                return ast.map(a => this.toStringAST(a)).join(",");
+                return ast.map(function (a) { return _this.toStringAST(a); }).join(",");
             }
             return "error";
-        }
-        toString() {
+        };
+        Interpreter.prototype.toString = function () {
             return Interpreter.toStringAST(this.ast);
-        }
-        run(environment) {
-            var runLogic = (ast) => {
+        };
+        Interpreter.prototype.run = function (environment) {
+            var runLogic = function (ast) {
                 if (!ast) {
                     return null;
                 }
                 if (ast instanceof ASTNode) {
                     switch (ast.operator) {
                         case NodeType["."]:
-                            let left;
+                            var left = void 0;
                             if (ast.left instanceof WordNode) {
                                 if (ast.left.type == NodeType.word) {
                                     left = environment[ast.left.value];
@@ -831,7 +857,7 @@ var vm;
                             else {
                                 left = runLogic(ast.left);
                             }
-                            let rightWord;
+                            var rightWord = void 0;
                             if (ast.right instanceof WordNode) {
                                 rightWord = ast.right.value;
                             }
@@ -875,34 +901,35 @@ var vm;
                         case NodeType["boolean"]:
                             return runLogic(ast.left);
                         case NodeType["function"]:
-                            let self;
-                            let target;
+                            var self_1;
+                            var target = void 0;
                             if (ast.left instanceof ASTNode) {
-                                self = runLogic(ast.left.left);
-                                let rightWord;
+                                self_1 = runLogic(ast.left.left);
+                                var rightWord_1;
                                 if (ast.left.right instanceof WordNode) {
-                                    rightWord = ast.left.right.value;
+                                    rightWord_1 = ast.left.right.value;
                                 }
                                 else {
-                                    rightWord = runLogic(ast.left.right);
+                                    rightWord_1 = runLogic(ast.left.right);
                                 }
-                                target = self[rightWord];
+                                target = self_1[rightWord_1];
                             }
                             else {
                                 target = runLogic(ast.left);
                             }
-                            let func;
+                            var func = void 0;
                             if (typeof target == "function") {
                                 func = target;
                             }
                             else {
                                 func = environment[target];
                             }
-                            let paramList = [];
-                            for (let p of ast.right) {
+                            var paramList = [];
+                            for (var _i = 0, _a = ast.right; _i < _a.length; _i++) {
+                                var p = _a[_i];
                                 paramList.push(runLogic(p));
                             }
-                            return func.apply(self || environment, paramList);
+                            return func.apply(self_1 || environment, paramList);
                     }
                 }
                 else if (ast instanceof WordNode) {
@@ -914,28 +941,30 @@ var vm;
                 throw "AST异常" + JSON.stringify(ast);
             };
             return runLogic(this.ast);
-        }
-    }
+        };
+        return Interpreter;
+    }());
     vm.Interpreter = Interpreter;
     /**
      * 基础环境
      */
     vm.environment = {};
     //加入数学基础库
-    Object.getOwnPropertyNames(Math).forEach(k => vm.def(vm.environment, k.toUpperCase(), Math[k]));
+    Object.getOwnPropertyNames(Math).forEach(function (k) { return vm.def(vm.environment, k.toUpperCase(), Math[k]); });
     /**
      * 继承自基础属性
      */
-    function extendsEnvironment(obj) {
+    function extendsEnvironment (obj) {
         obj.__proto__ = vm.environment;
     }
     vm.extendsEnvironment = extendsEnvironment;
     /**
      * 向目标对象实现所有基础属性
      */
-    function implementEnvironment(obj) {
-        let ks = Object.getOwnPropertyNames(vm.environment);
-        for (let k of ks) {
+    function implementEnvironment (obj) {
+        var ks = Object.getOwnPropertyNames(vm.environment);
+        for (var _i = 0, ks_1 = ks; _i < ks_1.length; _i++) {
+            var k = ks_1[_i];
             vm.def(obj, k, vm.environment[k]);
         }
         return obj;
@@ -985,11 +1014,11 @@ var vm;
     /**
      * 将对象处理为可观察对象
      */
-    function observe(value) {
+    function observe (value) {
         if (!vm.isObject(value)) {
             return;
         }
-        let ob;
+        var ob;
         if (value.__ob__ instanceof Observer) {
             //对象已经绑定
             ob = value.__ob__;
@@ -1004,25 +1033,25 @@ var vm;
     /**
      * 拦截对象所有的key和value
      */
-    function defineReactive(obj, key, 
-    /**
-     * 对象的默认值，也就是 obj[key]
-     */
-    val) {
+    function defineReactive (obj, key,
+        /**
+         * 对象的默认值，也就是 obj[key]
+         */
+        val) {
         //必包的中依赖，相当于是每一个属性的附加对象，用于记录属性的所有以来侦听。
-        const dep = new vm.Dep();
-        const property = Object.getOwnPropertyDescriptor(obj, key);
+        var dep = new vm.Dep();
+        var property = Object.getOwnPropertyDescriptor(obj, key);
         if (property && property.configurable === false) {
             return;
         }
-        const getter = property && property.get;
-        const setter = property && property.set;
-        let valOb = observe(val);
+        var getter = property && property.get;
+        var setter = property && property.set;
+        var valOb = observe(val);
         Object.defineProperty(obj, key, {
             enumerable: true,
             configurable: true,
-            get: function reactiveGetter() {
-                const value = getter ? getter.call(obj) : val;
+            get: function reactiveGetter () {
+                var value = getter ? getter.call(obj) : val;
                 //进行依赖收集，依赖收集前 Dependency.collectTarget 会被赋值，收集完成后会置空。
                 if (vm.Dep.target) {
                     dep.depend(); //将自身加入到Dependency.collectTarget中
@@ -1035,8 +1064,8 @@ var vm;
                 }
                 return value;
             },
-            set: function reactiveSetter(newVal) {
-                const value = getter ? getter.call(obj) : val;
+            set: function reactiveSetter (newVal) {
+                var value = getter ? getter.call(obj) : val;
                 if (newVal === value || (newVal !== newVal && value !== value)) {
                     return; //相等则无需进行后续处理
                 }
@@ -1052,8 +1081,8 @@ var vm;
         });
     }
     vm.defineReactive = defineReactive;
-    class Observer {
-        constructor(value) {
+    var Observer = /** @class */ (function () {
+        function Observer (value) {
             this.value = value;
             this.dep = new vm.Dep();
             //实现双向绑定
@@ -1071,52 +1100,57 @@ var vm;
         /**
          * 遍历所有属性，拦截get set
          */
-        walk(obj) {
-            const keys = Object.keys(obj);
-            for (let i = 0; i < keys.length; i++) {
+        Observer.prototype.walk = function (obj) {
+            var keys = Object.keys(obj);
+            for (var i = 0; i < keys.length; i++) {
                 defineReactive(obj, keys[i], obj[keys[i]]);
             }
-        }
+        };
         /**
          * 所以成员都替换成observe
          */
-        observeArray(items) {
-            for (let i = 0, l = items.length; i < l; i++) {
+        Observer.prototype.observeArray = function (items) {
+            for (var i = 0, l = items.length; i < l; i++) {
                 observe(items[i]);
             }
-        }
-    }
+        };
+        return Observer;
+    }());
     vm.Observer = Observer;
 })(vm || (vm = {}));
 var vm;
 (function (vm) {
-    class Tick {
-        static add(w) {
+    var Tick = /** @class */ (function () {
+        function Tick () {
+        }
+        Tick.add = function (w) {
             if (!this.queueMap.has(w.id)) {
                 this.queueMap.add(w.id);
                 this.queue.push(w);
             }
-        }
-        static next() {
+        };
+        Tick.next = function () {
             this.queueMap.clear();
-            const temp = this.queue;
+            var temp = this.queue;
             this.queue = this.temp;
             this.temp = temp;
-            for (let w of temp) {
+            for (var _i = 0, temp_2 = temp; _i < temp_2.length; _i++) {
+                var w = temp_2[_i];
                 w.run();
             }
             temp.length = 0;
-        }
-    }
-    Tick.temp = [];
-    Tick.queue = [];
-    Tick.queueMap = new vm.IdMap();
+        };
+        Tick.temp = [];
+        Tick.queue = [];
+        Tick.queueMap = new vm.IdMap();
+        return Tick;
+    }());
     vm.Tick = Tick;
 })(vm || (vm = {}));
 var vm;
 (function (vm) {
-    class Watcher {
-        constructor(host, expOrFn, cb, options) {
+    var Watcher = /** @class */ (function () {
+        function Watcher (host, expOrFn, cb, options) {
             this.host = host;
             // options
             if (options) {
@@ -1139,7 +1173,7 @@ var vm;
                 this.getter = vm.parsePath(expOrFn);
                 if (!this.getter) {
                     this.getter = function () { };
-                    console.warn(`expOrFn 路径异常: "${expOrFn}" `);
+                    console.warn("expOrFn \u8DEF\u5F84\u5F02\u5E38: \"" + expOrFn + "\" ");
                 }
             }
             this.value = this.get();
@@ -1147,22 +1181,22 @@ var vm;
         /**
          * 获取值，并重新收集依赖
          */
-        get() {
+        Watcher.prototype.get = function () {
             /*开始收集依赖*/
             vm.Dep.pushCollectTarget(this);
-            let value;
+            var value;
             value = this.getter.call(this.host, this.host);
             /*结束收集*/
             vm.Dep.popCollectTarget();
             this.cleanupDeps();
             return value;
-        }
+        };
         /**
          * 添加依赖
          * 在收集依赖的时候，触发 Dependency.collectTarget.addDep
          */
-        addDep(dep) {
-            const id = dep.id;
+        Watcher.prototype.addDep = function (dep) {
+            var id = dep.id;
             if (!this.newDepIds.has(id)) {
                 this.newDepIds.add(id);
                 this.newDeps.push(dep);
@@ -1171,15 +1205,15 @@ var vm;
                     dep.add(this);
                 }
             }
-        }
+        };
         /**
          * 清理依赖收集
          */
-        cleanupDeps() {
+        Watcher.prototype.cleanupDeps = function () {
             //移除本次收集后，不需要的依赖（通过差异对比）
-            let i = this.deps.length;
+            var i = this.deps.length;
             while (i--) {
-                const dep = this.deps[i];
+                var dep = this.deps[i];
                 if (!this.newDepIds.has(dep.id)) {
                     dep.remove(this);
                 }
@@ -1187,15 +1221,15 @@ var vm;
             //让new作为当前记录的依赖，并清空旧的
             this.depIds = this.newDepIds;
             this.newDepIds.clear();
-            let tmp = this.deps;
+            var tmp = this.deps;
             this.deps = this.newDeps;
             this.newDeps = tmp;
             this.newDeps.length = 0;
-        }
+        };
         /**
          * 当依赖发生变化就会被执行
          */
-        update() {
+        Watcher.prototype.update = function () {
             if (this.sync) {
                 //立即渲染
                 this.run();
@@ -1204,45 +1238,46 @@ var vm;
                 //下一帧渲染，可以降低重复渲染的概率
                 vm.Tick.add(this);
             }
-        }
+        };
         /**
          * 执行watch
          */
-        run() {
+        Watcher.prototype.run = function () {
             if (this.active) {
-                const value = this.get();
+                var value = this.get();
                 //如果数值不想等，或者是复杂对象就需要更新视图
                 if (value !== this.value || vm.isObject(value)) {
-                    const oldValue = this.value;
+                    var oldValue = this.value;
                     this.value = value;
                     /*触发回调渲染视图*/
                     this.cb.call(this.host, value, oldValue);
                 }
             }
-        }
+        };
         /**
          * 收集该watcher的所有deps依赖
          */
-        depend() {
-            let i = this.deps.length;
+        Watcher.prototype.depend = function () {
+            var i = this.deps.length;
             while (i--) {
                 this.deps[i].depend();
             }
-        }
+        };
         /**
          * 将自身从所有依赖收集订阅列表删除
          */
-        teardown() {
+        Watcher.prototype.teardown = function () {
             if (this.active) {
                 vm.remove(this.host.$watchers, this);
-                let i = this.deps.length;
+                var i = this.deps.length;
                 while (i--) {
                     this.deps[i].remove(this);
                 }
                 this.active = false;
             }
-        }
-    }
+        };
+        return Watcher;
+    }());
     vm.Watcher = Watcher;
 })(vm || (vm = {}));
 window["vm"] = vm;
