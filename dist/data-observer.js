@@ -657,7 +657,7 @@ var vm;
                     return NodeType.P10;
                 }
                 else {
-                    throw "目标不是运算符" + NodeType[op.type] + " " + String(op.value);
+                    throw "目标不是运算符" + NodeType[op.type] + " " + String(op.value) + ("\u5728 " + op.lineStart + ":" + op.columnStart + " - " + op.lineEnd + ":" + op.columnEnd);
                 }
             };
             /**
@@ -715,12 +715,13 @@ var vm;
                         throw "死循环";
                     }
                     var left = nodeList[currentPos];
+                    var errPos = "\u5728 " + (left.lineStart + 1) + ":" + (left.columnStart + 1);
                     if (left.type < NodeType.P9) {
                         //一开始就是运算符，直接计算返回
                         if (left.type == NodeType["!"]) {
                             var right = nodeList[currentPos + 1];
                             if (right == null) {
-                                throw "语法错误，" + expression + "，无法找到运算符右值 '" + NodeType[left.type] + "' ";
+                                throw "语法错误，" + expression + "，无法找到运算符右值 '" + NodeType[left.type] + "' " + errPos;
                             }
                             if (right.type < NodeType.P9) {
                                 //右值也是运算符
@@ -730,14 +731,14 @@ var vm;
                                     currentPos = r_1.pos;
                                 }
                                 else {
-                                    throw "语法错误，" + expression + "，运算符'" + NodeType[left.type] + "'的右值不合理，竟然是 '" + NodeType[right.type] + "' ";
+                                    throw "语法错误，" + expression + "，运算符'" + NodeType[left.type] + "'的右值不合理，竟然是 '" + NodeType[right.type] + "' " + errPos;
                                 }
                             }
                             else {
                                 //验证优先级
                                 var right2 = nodeList[currentPos + 2];
                                 if (right2 != null && right2.type > NodeType.P10) {
-                                    throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' ";
+                                    throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' " + errPos;
                                 }
                                 if (right2 != null && getPN(right2) < getPN(left)) {
                                     //右侧运算符优先
@@ -756,7 +757,7 @@ var vm;
                             var r_2 = startRead(currentPos + 1);
                             var next = nodeList[r_2.pos];
                             if (next == null || next.type != NodeType[")"]) {
-                                throw "语法错误，" + expression + "，缺少闭合符号 ')'";
+                                throw "语法错误，" + expression + "，缺少闭合符号 ')'" + errPos;
                             }
                             joinNode(r_2.node);
                             currentPos = r_2.pos;
@@ -768,7 +769,7 @@ var vm;
                             var r_3 = startRead(currentPos + 1);
                             var next = nodeList[r_3.pos];
                             if (next == null || next.type != NodeType["]"]) {
-                                throw "语法错误，" + expression + "，缺少闭合符号 ']'";
+                                throw "语法错误，" + expression + "，缺少闭合符号 ']'" + errPos;
                             }
                             joinNode(r_3.node);
                             currentPos = r_3.pos;
@@ -777,7 +778,7 @@ var vm;
                             }
                         }
                         else {
-                            throw "语法错误，" + expression + "，无法匹配的运算符 '" + NodeType[left.type] + "' ";
+                            throw "语法错误，" + expression + "，无法匹配的运算符 '" + NodeType[left.type] + "' " + errPos;
                         }
                     }
                     else {
@@ -791,13 +792,13 @@ var vm;
                             break; //已结束
                         }
                         if (op.type > NodeType.P9) {
-                            throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[op.type] + "' ";
+                            throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[op.type] + "' " + errPos;
                         }
                         if (op.type == NodeType["("]) {
                             //函数调用
                             var right2 = nodeList[currentPos + 2];
                             if (right2 == null) {
-                                throw "语法错误，" + expression + "，函数调用缺少右括号 ";
+                                throw "语法错误，" + expression + "，函数调用缺少右括号 " + errPos;
                             }
                             if (right2.type == NodeType[")"]) {
                                 //无参函数
@@ -814,7 +815,7 @@ var vm;
                                     parList.push(r_4.node.right ? r_4.node : r_4.node.left);
                                 }
                                 if (nodeList[r_4.pos] == undefined || nodeList[r_4.pos].type != NodeType[")"]) {
-                                    throw "语法错误，" + expression + "，缺少闭合符号 ')'";
+                                    throw "语法错误，" + expression + "，缺少闭合符号 ')'" + errPos;
                                 }
                                 linkNode(left, NodeType.call, parList);
                                 currentPos = r_4.pos;
@@ -825,14 +826,14 @@ var vm;
                             //属性访问
                             var right2 = nodeList[currentPos + 2];
                             if (right2 == null) {
-                                throw "语法错误，" + expression + "，属性访问调用缺少右括号 ";
+                                throw "语法错误，" + expression + "，属性访问调用缺少右括号 " + errPos;
                             }
                             else if (right2.type == NodeType["]"]) {
-                                throw "语法错误，" + expression + "，[]中必须传入访问变量 ";
+                                throw "语法错误，" + expression + "，[]中必须传入访问变量 " + errPos;
                             }
                             var r_5 = startRead(currentPos + 2); //读取括号里的内容
                             if (nodeList[r_5.pos] == null || nodeList[r_5.pos].type != NodeType["]"]) {
-                                throw "语法错误，" + expression + "，属性访问调用缺少右括号 ";
+                                throw "语法错误，" + expression + "，属性访问调用缺少右括号 " + errPos;
                             }
                             linkNode(left, NodeType["."], r_5.node);
                             currentPos = r_5.pos;
@@ -840,7 +841,7 @@ var vm;
                         }
                         var right = nodeList[currentPos + 2];
                         if (right == null) {
-                            throw "语法错误，" + expression + "，无法找到运算符右值 '" + NodeType[op.type] + "' ";
+                            throw "语法错误，" + expression + "，无法找到运算符右值 '" + NodeType[op.type] + "' " + errPos;
                         }
                         if (right.type < NodeType.P9) {
                             //右值也是运算符
@@ -850,14 +851,14 @@ var vm;
                                 currentPos = r_6.pos;
                             }
                             else {
-                                throw "语法错误，" + expression + "，运算符'" + NodeType[op.type] + "'的右值不合理，竟然是 '" + NodeType[right.type] + "' ";
+                                throw "语法错误，" + expression + "，运算符'" + NodeType[op.type] + "'的右值不合理，竟然是 '" + NodeType[right.type] + "' " + errPos;
                             }
                         }
                         else {
                             //验证优先级
                             var right2 = nodeList[currentPos + 3];
                             if (right2 != null && right2.type > NodeType.P10) {
-                                throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' ";
+                                throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' " + errPos;
                             }
                             if (right2 != null && getPN(right2) < getPN(op)) {
                                 //右侧运算符优先
