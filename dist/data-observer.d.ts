@@ -186,7 +186,7 @@ declare namespace vm {
         constructor(expression: string);
         static toWords(expression: string): WordNode[];
         static toAST(nodeList: WordNode[], expression: string): ASTNode;
-        static toStringAST(ast: ASTNode | WordNode | ASTNode[]): string;
+        static toStringAST(ast: ASTNode | WordNode | ASTNode[], isRoot?: boolean): string;
         toString(): string;
         run(environment: {
             [key: string]: any;

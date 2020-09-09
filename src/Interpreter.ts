@@ -496,23 +496,34 @@ namespace vm {
             return startRead(0, true).node;
         }
 
-        static toStringAST(ast: ASTNode | WordNode | ASTNode[]): string {
+        static toStringAST(ast: ASTNode | WordNode | ASTNode[], isRoot = true): string {
+            var r = ""
+            if (!isRoot && ast instanceof ASTNode) {
+                r += "("
+            }
             if (ast instanceof ASTNode) {
                 if (ast.operator == NodeType.call) {
-                    return `(${this.toStringAST(ast.left!)}(${this.toStringAST(ast.right!)}))`
+                    r += `${this.toStringAST(ast.left!)}(${this.toStringAST(ast.right!, false)})`
                 } else if (ast.left == null) {
-                    return `(${NodeType[ast.operator]} ${this.toStringAST(ast.right!)})`
+                    if (ast.operator == NodeType.lambda) {
+                        r += `{${this.toStringAST(ast.right!, true)}}`
+                    } else {
+                        r += `${NodeType[ast.operator]} ${this.toStringAST(ast.right!, false)}`
+                    }
                 } else if (ast.right == null) {
-                    return `(${this.toStringAST(ast.left)})`
+                    r += `${this.toStringAST(ast.left, false)}`
                 } else {
-                    return `(${this.toStringAST(ast.left)} ${NodeType[ast.operator]} ${this.toStringAST(ast.right)})`
+                    r += `${this.toStringAST(ast.left, false)} ${NodeType[ast.operator]} ${this.toStringAST(ast.right, false)}`
                 }
             } else if (ast instanceof WordNode) {
-                return ast.type == NodeType.string ? `"${ast.value}"` : `${ast.value}`
+                r += ast.type == NodeType.string ? `"${ast.value}"` : `${ast.value}`
             } else if (ast instanceof Array) {
-                return ast.map(a => this.toStringAST(a)).join(",")
+                r += ast.map(a => this.toStringAST(a, true)).join(", ")
             }
-            return "error"
+            if (!isRoot && ast instanceof ASTNode) {
+                r += ")"
+            }
+            return r
         }
 
         toString() {

@@ -463,6 +463,9 @@ test("语法分析 复杂", () => {
     expect((tree.right as any)[2].right.right.type).toBe(vm.NodeType.word);
     expect((tree.right as any)[2].right.right.value).toBe("加成");
 
+    var str = vm.Interpreter.toStringAST(tree);
+    expect(str).toBe("SUM(装备列表, {((等级 * 加成) + 100) - 10}, {等级 * 加成})")
+
 })
 
 test("环境测试", () => {
