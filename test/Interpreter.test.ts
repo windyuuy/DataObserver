@@ -421,6 +421,48 @@ test("语法分析 复杂", () => {
     expect((tree.right as any)[1].right.right.left.value).toBe("LvA")
     expect((tree.right as any)[1].right.right.right.value).toBe("LvB")
 
+
+    var nodeList = vm.Interpreter.toWords('SUM(装备列表,{等级*加成})')
+    var tree = vm.Interpreter.toAST(nodeList, 'SUM(装备列表,{等级*加成})')
+
+    expect(tree.operator).toBe(vm.NodeType.call);
+    expect((tree.left as any).type).toBe(vm.NodeType.word);
+    expect((tree.left as any).value).toBe("SUM");
+    expect((tree.right as any)[0].type).toBe(vm.NodeType.word);
+    expect((tree.right as any)[0].value).toBe("装备列表");
+    expect((tree.right as any)[1].operator).toBe(vm.NodeType.lambda);
+    expect((tree.right as any)[1].right.operator).toBe(vm.NodeType["*"]);
+    expect((tree.right as any)[1].right.left.type).toBe(vm.NodeType.word);
+    expect((tree.right as any)[1].right.left.value).toBe("等级");
+    expect((tree.right as any)[1].right.right.type).toBe(vm.NodeType.word);
+    expect((tree.right as any)[1].right.right.value).toBe("加成");
+
+    var nodeList = vm.Interpreter.toWords('SUM(装备列表,{等级*加成+100-10},{等级*加成})')
+    var tree = vm.Interpreter.toAST(nodeList, 'SUM(装备列表,{等级*加成+100-10},{等级*加成})')
+
+    expect(tree.operator).toBe(vm.NodeType.call);
+    expect((tree.left as any).type).toBe(vm.NodeType.word);
+    expect((tree.left as any).value).toBe("SUM");
+    expect((tree.right as any)[0].type).toBe(vm.NodeType.word);
+    expect((tree.right as any)[0].value).toBe("装备列表");
+    expect((tree.right as any)[1].operator).toBe(vm.NodeType.lambda);
+    expect((tree.right as any)[1].right.operator).toBe(vm.NodeType["-"]);
+    expect((tree.right as any)[1].right.left.operator).toBe(vm.NodeType["+"]);
+    expect((tree.right as any)[1].right.left.left.operator).toBe(vm.NodeType["*"]);
+    expect((tree.right as any)[1].right.left.left.left.value).toBe("等级");
+    expect((tree.right as any)[1].right.left.left.right.type).toBe(vm.NodeType.word);
+    expect((tree.right as any)[1].right.left.left.right.value).toBe("加成");
+    expect((tree.right as any)[1].right.left.right.type).toBe(vm.NodeType.number);
+    expect((tree.right as any)[1].right.left.right.value).toBe(100);
+    expect((tree.right as any)[1].right.right.type).toBe(vm.NodeType.number);
+    expect((tree.right as any)[1].right.right.value).toBe(10);
+    expect((tree.right as any)[2].operator).toBe(vm.NodeType.lambda);
+    expect((tree.right as any)[2].right.operator).toBe(vm.NodeType["*"]);
+    expect((tree.right as any)[2].right.left.type).toBe(vm.NodeType.word);
+    expect((tree.right as any)[2].right.left.value).toBe("等级");
+    expect((tree.right as any)[2].right.right.type).toBe(vm.NodeType.word);
+    expect((tree.right as any)[2].right.right.value).toBe("加成");
+
 })
 
 test("环境测试", () => {

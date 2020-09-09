@@ -431,6 +431,8 @@ var vm;
             this.left = left;
             this.operator = operator;
             this.right = right;
+            //父节点
+            this.parent = null;
         }
         return ASTNode;
     }());
@@ -777,6 +779,18 @@ var vm;
                                 break;
                             }
                         }
+                        else if (left.type == NodeType["{"]) {
+                            var r_4 = startRead(currentPos + 1);
+                            var next = nodeList[r_4.pos];
+                            if (next == null || next.type != NodeType["}"]) {
+                                throw "语法错误，" + expression + "，缺少闭合符号 '}'" + errPos;
+                            }
+                            linkNode(null, NodeType.lambda, r_4.node);
+                            currentPos = r_4.pos + 1; //跳过右括号，相当于完全读取掉
+                            if (!isRoot) {
+                                break;
+                            }
+                        }
                         else {
                             throw "语法错误，" + expression + "，无法匹配的运算符 '" + NodeType[left.type] + "' " + errPos;
                         }
@@ -808,17 +822,17 @@ var vm;
                             else {
                                 //开始读取参数
                                 var parList = [];
-                                var r_4 = startRead(currentPos + 2); //读取括号里的内容
-                                parList.push(r_4.node.right ? r_4.node : r_4.node.left);
-                                while (nodeList[r_4.pos] && nodeList[r_4.pos].type == NodeType[","]) {
-                                    r_4 = startRead(r_4.pos + 1); //读取括号里的内容
-                                    parList.push(r_4.node.right ? r_4.node : r_4.node.left);
+                                var r_5 = startRead(currentPos + 2); //读取括号里的内容
+                                parList.push(r_5.node.right ? r_5.node : r_5.node.left);
+                                while (nodeList[r_5.pos] && nodeList[r_5.pos].type == NodeType[","]) {
+                                    r_5 = startRead(r_5.pos + 1); //读取括号里的内容
+                                    parList.push(r_5.node.right ? r_5.node : r_5.node.left);
                                 }
-                                if (nodeList[r_4.pos] == undefined || nodeList[r_4.pos].type != NodeType[")"]) {
+                                if (nodeList[r_5.pos] == undefined || nodeList[r_5.pos].type != NodeType[")"]) {
                                     throw "语法错误，" + expression + "，缺少闭合符号 ')'" + errPos;
                                 }
                                 linkNode(left, NodeType.call, parList);
-                                currentPos = r_4.pos;
+                                currentPos = r_5.pos;
                             }
                             continue;
                         }
@@ -831,12 +845,12 @@ var vm;
                             else if (right2.type == NodeType["]"]) {
                                 throw "语法错误，" + expression + "，[]中必须传入访问变量 " + errPos;
                             }
-                            var r_5 = startRead(currentPos + 2); //读取括号里的内容
-                            if (nodeList[r_5.pos] == null || nodeList[r_5.pos].type != NodeType["]"]) {
+                            var r_6 = startRead(currentPos + 2); //读取括号里的内容
+                            if (nodeList[r_6.pos] == null || nodeList[r_6.pos].type != NodeType["]"]) {
                                 throw "语法错误，" + expression + "，属性访问调用缺少右括号 " + errPos;
                             }
-                            linkNode(left, NodeType["."], r_5.node);
-                            currentPos = r_5.pos;
+                            linkNode(left, NodeType["."], r_6.node);
+                            currentPos = r_6.pos;
                             continue;
                         }
                         var right = nodeList[currentPos + 2];
@@ -846,9 +860,9 @@ var vm;
                         if (right.type < NodeType.P9) {
                             //右值也是运算符
                             if (right.type == NodeType["!"] || right.type == NodeType["("] || right.type == NodeType["["]) {
-                                var r_6 = startRead(currentPos + 2);
-                                linkNode(left, op.type, r_6.node);
-                                currentPos = r_6.pos;
+                                var r_7 = startRead(currentPos + 2);
+                                linkNode(left, op.type, r_7.node);
+                                currentPos = r_7.pos;
                             }
                             else {
                                 throw "语法错误，" + expression + "，运算符'" + NodeType[op.type] + "'的右值不合理，竟然是 '" + NodeType[right.type] + "' " + errPos;

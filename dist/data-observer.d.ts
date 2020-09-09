@@ -176,6 +176,7 @@ declare namespace vm {
         left: ASTNode | WordNode | null;
         operator: NodeType;
         right: ASTNode | WordNode | ASTNode[] | null;
+        parent: ASTNode | null;
         constructor(left: ASTNode | WordNode | null, //一元运算符允许为空
         operator: NodeType, right: ASTNode | WordNode | ASTNode[] | null);
     }

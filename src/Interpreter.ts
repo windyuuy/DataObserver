@@ -50,6 +50,8 @@ namespace vm {
     }
 
     class ASTNode {
+        //父节点
+        public parent: ASTNode | null = null;
         constructor(
             public left: ASTNode | WordNode | null,//一元运算符允许为空
             public operator: NodeType,
@@ -381,6 +383,17 @@ namespace vm {
                             }
                             joinNode(r.node);
                             currentPos = r.pos;
+                            if (!isRoot) {
+                                break;
+                            }
+                        } else if (left.type == NodeType["{"]) {
+                            let r = startRead(currentPos + 1)
+                            let next = nodeList[r.pos];
+                            if (next == null || next.type != NodeType["}"]) {
+                                throw "语法错误，" + expression + "，缺少闭合符号 '}'" + errPos;
+                            }
+                            linkNode(null, NodeType.lambda, r.node)
+                            currentPos = r.pos + 1;//跳过右括号，相当于完全读取掉
                             if (!isRoot) {
                                 break;
                             }
