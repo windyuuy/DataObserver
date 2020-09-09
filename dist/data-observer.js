@@ -337,7 +337,7 @@ var vm;
 var vm;
 (function (vm) {
     const symbolList = [
-        "(", ")", "[", "]", ".",
+        "(", ")", "[", "]", "{", "}", ".",
         "!",
         "**",
         "*", "/", "%",
@@ -352,47 +352,55 @@ var vm;
         //运算符
         NodeType[NodeType["["] = 0] = "[";
         NodeType[NodeType["("] = 1] = "(";
-        NodeType[NodeType["."] = 2] = ".";
-        NodeType[NodeType["P1"] = 3] = "P1";
-        NodeType[NodeType["!"] = 4] = "!";
-        NodeType[NodeType["P2"] = 5] = "P2";
-        NodeType[NodeType["**"] = 6] = "**";
-        NodeType[NodeType["P3"] = 7] = "P3";
-        NodeType[NodeType["*"] = 8] = "*";
-        NodeType[NodeType["/"] = 9] = "/";
-        NodeType[NodeType["%"] = 10] = "%";
-        NodeType[NodeType["P4"] = 11] = "P4";
-        NodeType[NodeType["+"] = 12] = "+";
-        NodeType[NodeType["-"] = 13] = "-";
-        NodeType[NodeType["P5"] = 14] = "P5";
-        NodeType[NodeType[">"] = 15] = ">";
-        NodeType[NodeType["<"] = 16] = "<";
-        NodeType[NodeType[">="] = 17] = ">=";
-        NodeType[NodeType["<="] = 18] = "<=";
-        NodeType[NodeType["P6"] = 19] = "P6";
-        NodeType[NodeType["!="] = 20] = "!=";
-        NodeType[NodeType["=="] = 21] = "==";
-        NodeType[NodeType["P7"] = 22] = "P7";
-        NodeType[NodeType["&&"] = 23] = "&&";
-        NodeType[NodeType["||"] = 24] = "||";
-        NodeType[NodeType["P8"] = 25] = "P8";
-        NodeType[NodeType[","] = 26] = ",";
-        NodeType[NodeType["P9"] = 27] = "P9";
-        NodeType[NodeType["]"] = 28] = "]";
-        NodeType[NodeType[")"] = 29] = ")";
-        NodeType[NodeType["P10"] = 30] = "P10";
+        NodeType[NodeType["{"] = 2] = "{";
+        NodeType[NodeType["."] = 3] = ".";
+        NodeType[NodeType["P1"] = 4] = "P1";
+        NodeType[NodeType["!"] = 5] = "!";
+        NodeType[NodeType["P2"] = 6] = "P2";
+        NodeType[NodeType["**"] = 7] = "**";
+        NodeType[NodeType["P3"] = 8] = "P3";
+        NodeType[NodeType["*"] = 9] = "*";
+        NodeType[NodeType["/"] = 10] = "/";
+        NodeType[NodeType["%"] = 11] = "%";
+        NodeType[NodeType["P4"] = 12] = "P4";
+        NodeType[NodeType["+"] = 13] = "+";
+        NodeType[NodeType["-"] = 14] = "-";
+        NodeType[NodeType["P5"] = 15] = "P5";
+        NodeType[NodeType[">"] = 16] = ">";
+        NodeType[NodeType["<"] = 17] = "<";
+        NodeType[NodeType[">="] = 18] = ">=";
+        NodeType[NodeType["<="] = 19] = "<=";
+        NodeType[NodeType["P6"] = 20] = "P6";
+        NodeType[NodeType["!="] = 21] = "!=";
+        NodeType[NodeType["=="] = 22] = "==";
+        NodeType[NodeType["P7"] = 23] = "P7";
+        NodeType[NodeType["&&"] = 24] = "&&";
+        NodeType[NodeType["||"] = 25] = "||";
+        NodeType[NodeType["P8"] = 26] = "P8";
+        NodeType[NodeType[","] = 27] = ",";
+        NodeType[NodeType["P9"] = 28] = "P9";
+        NodeType[NodeType["]"] = 29] = "]";
+        NodeType[NodeType[")"] = 30] = ")";
+        NodeType[NodeType["}"] = 31] = "}";
+        NodeType[NodeType["P10"] = 32] = "P10";
         //值
-        NodeType[NodeType["number"] = 31] = "number";
-        NodeType[NodeType["word"] = 32] = "word";
-        NodeType[NodeType["string"] = 33] = "string";
-        NodeType[NodeType["boolean"] = 34] = "boolean";
+        NodeType[NodeType["number"] = 33] = "number";
+        NodeType[NodeType["word"] = 34] = "word";
+        NodeType[NodeType["string"] = 35] = "string";
+        NodeType[NodeType["boolean"] = 36] = "boolean";
+        NodeType[NodeType["annotation"] = 37] = "annotation";
         //组合，只会在AST中出现
-        NodeType[NodeType["function"] = 35] = "function";
+        NodeType[NodeType["call"] = 38] = "call";
+        NodeType[NodeType["lambda"] = 39] = "lambda";
     })(NodeType = vm.NodeType || (vm.NodeType = {}));
     class WordNode {
-        constructor(type, value) {
+        constructor(type, value, lineStart, columnStart, columnEnd) {
             this.type = type;
             this.value = value;
+            this.lineStart = lineStart;
+            this.columnStart = columnStart;
+            this.columnEnd = columnEnd;
+            this.lineEnd = lineStart;
         }
     }
     class ASTNode {
@@ -423,9 +431,12 @@ var vm;
             this.ast = Interpreter.toAST(Interpreter.toWords(this.expression), this.expression);
         }
         static toWords(expression) {
+            var line = 0;
+            var column = 0;
+            let startColum = -1; //仅仅在多行的处理中使用
             var temp = "";
             var lastChar = "";
-            var state = 0; //0初始状态；1数字；2运算符；3引号字符串；4单词
+            var state = 0; //0初始状态；1数字；2运算符；3引号字符串；4单词；5行注释；6块注释
             var markType;
             var nodeList = [];
             var reset = () => {
@@ -433,6 +444,7 @@ var vm;
                 temp = '';
             };
             var run = (char) => {
+                var _a, _b;
                 if (state == 0) {
                     if (spaceMap[char]) {
                         return;
@@ -446,21 +458,26 @@ var vm;
                     else if (operatorCharMap[char]) {
                         //运算符
                         temp += char;
-                        if (doubleOpMap[char]) {
+                        if (doubleOpMap[char] || char == "/") { //有// 和 /* 等两种注释的情况
                             //可能是多运算符
                             state = 2;
+                        }
+                        else if (char == "-" && nodeList.length != 0 && nodeList[nodeList.length - 1].type < NodeType.P8) {
+                            //负数数字
+                            state = 1;
                         }
                         else {
                             if (NodeType[temp] == undefined) {
                                 throw "表达式编译失败" + expression + " 不支持的运算符: " + temp;
                             }
-                            nodeList.push(new WordNode(NodeType[temp], null));
+                            nodeList.push(new WordNode(NodeType[temp], null, line, column - temp.length + 1, column));
                             reset();
                         }
                     }
                     else if (markMap[char]) {
                         //引号
                         markType = char;
+                        startColum = column;
                         state = 3;
                     }
                     else {
@@ -476,21 +493,33 @@ var vm;
                         temp += char;
                     }
                     else {
-                        nodeList.push(new WordNode(NodeType.number, parseFloat(temp)));
+                        nodeList.push(new WordNode(NodeType.number, parseFloat(temp), line, column - temp.length, column - 1));
                         reset();
                         run(char); //重新执行
                     }
                 }
                 else if (state == 2) {
                     //运算符
-                    if (NodeType[(temp + char)] != undefined) {
+                    let mg = temp + char;
+                    if (mg == "//") {
+                        //行注释
+                        temp += char;
+                        state = 5;
+                    }
+                    else if (mg == "/*") {
+                        //块注释
+                        temp += char;
+                        startColum = column - 1;
+                        state = 6;
+                    }
+                    else if (NodeType[(mg)] != undefined) {
                         //识别到运算符
                         temp += char;
-                        nodeList.push(new WordNode(NodeType[temp], null));
+                        nodeList.push(new WordNode(NodeType[temp], null, line, column - temp.length + 1, column));
                         reset();
                     }
                     else {
-                        nodeList.push(new WordNode(NodeType[temp], null));
+                        nodeList.push(new WordNode(NodeType[temp], null, line, column - temp.length, column - 1));
                         reset();
                         run(char); //重新执行
                     }
@@ -498,7 +527,14 @@ var vm;
                 else if (state == 3) {
                     //引号
                     if (char == markType && lastChar != "\\") {
-                        nodeList.push(new WordNode(NodeType.string, temp));
+                        if (markType == "`") {
+                            let node = new WordNode(NodeType.string, temp, line, startColum, column);
+                            node.lineStart = line - ((_a = (temp.match(/\n/g) || [])) === null || _a === void 0 ? void 0 : _a.length);
+                            nodeList.push(node);
+                        }
+                        else {
+                            nodeList.push(new WordNode(NodeType.string, temp, line, startColum, column));
+                        }
                         reset();
                     }
                     else {
@@ -509,13 +545,37 @@ var vm;
                     //单词
                     if (spaceMap[char] || operatorCharMap[char] || markMap[char]) {
                         if (temp == "true" || temp == "false") {
-                            nodeList.push(new WordNode(NodeType.boolean, temp == "true"));
+                            nodeList.push(new WordNode(NodeType.boolean, temp == "true", line, column - temp.length, column - 1));
                         }
                         else {
-                            nodeList.push(new WordNode(NodeType.word, temp));
+                            nodeList.push(new WordNode(NodeType.word, temp, line, column - temp.length, column - 1));
                         }
                         reset();
                         run(char); //重新执行
+                    }
+                    else {
+                        temp += char;
+                    }
+                }
+                else if (state == 5) {
+                    //行注释
+                    if (char == "\n" || char == "\r") {
+                        nodeList.push(new WordNode(NodeType.annotation, temp, line, column - temp.length, column));
+                        reset();
+                        //不需要重新执行，换行可以丢弃
+                    }
+                    else {
+                        temp += char;
+                    }
+                }
+                else if (state == 6) {
+                    //块注释
+                    if (lastChar + char == "*/") {
+                        temp += char;
+                        let node = new WordNode(NodeType.annotation, temp, line, startColum, column);
+                        node.lineStart = line - ((_b = (temp.match(/\n/g) || [])) === null || _b === void 0 ? void 0 : _b.length);
+                        nodeList.push(node);
+                        reset();
                     }
                     else {
                         temp += char;
@@ -525,6 +585,13 @@ var vm;
             for (const char of expression) {
                 run(char);
                 lastChar = char;
+                if (char == "\n") {
+                    line++;
+                    column = 0;
+                }
+                else {
+                    column++;
+                }
             }
             run(" "); //传入空格，使其收集最后的结束点
             return nodeList;
@@ -709,7 +776,7 @@ var vm;
                             }
                             if (right2.type == NodeType[")"]) {
                                 //无参函数
-                                linkNode(left, NodeType.function, []);
+                                linkNode(left, NodeType.call, []);
                                 currentPos += 2;
                             }
                             else {
@@ -724,7 +791,7 @@ var vm;
                                 if (nodeList[r.pos] == undefined || nodeList[r.pos].type != NodeType[")"]) {
                                     throw "语法错误，" + expression + "，缺少闭合符号 ')'";
                                 }
-                                linkNode(left, NodeType.function, parList);
+                                linkNode(left, NodeType.call, parList);
                                 currentPos = r.pos;
                             }
                             continue;
@@ -787,7 +854,7 @@ var vm;
         }
         static toStringAST(ast) {
             if (ast instanceof ASTNode) {
-                if (ast.operator == NodeType.function) {
+                if (ast.operator == NodeType.call) {
                     return `(${this.toStringAST(ast.left)}(${this.toStringAST(ast.right)}))`;
                 }
                 else if (ast.left == null) {
@@ -874,7 +941,7 @@ var vm;
                         case NodeType["string"]:
                         case NodeType["boolean"]:
                             return runLogic(ast.left);
-                        case NodeType["function"]:
+                        case NodeType["call"]:
                             let self;
                             let target;
                             if (ast.left instanceof ASTNode) {

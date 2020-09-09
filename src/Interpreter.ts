@@ -1,6 +1,6 @@
 namespace vm {
     const symbolList = [
-        "(", ")", "[", "]", ".",
+        "(", ")", "[", "]", "{", "}", ".",
         "!",
         "**",
         "*", "/", "%",
@@ -13,7 +13,7 @@ namespace vm {
 
     export enum NodeType {
         //运算符
-        "[", "(", ".", P1,
+        "[", "(", "{", ".", P1,
         "!", P2,
         "**", P3,
         "*", "/", "%", P4,
@@ -23,24 +23,30 @@ namespace vm {
         "&&", "||", P8,
         ",", P9,
 
-        "]", ")", P10,//结束符号
+        "]", ")", "}", P10,//结束符号
 
         //值
         "number",
         "word",
         "string",
         "boolean",
+        "annotation",
 
         //组合，只会在AST中出现
-        "function"
+        "call",
+        "lambda"
 
     }
 
     class WordNode {
+        public lineEnd: number;
         constructor(
             public type: NodeType,
-            public value: any
-        ) { }
+            public value: any,
+            public lineStart: number,
+            public columnStart: number,
+            public columnEnd: number,
+        ) { this.lineEnd = lineStart }
     }
 
     class ASTNode {
@@ -82,9 +88,12 @@ namespace vm {
         }
 
         static toWords(expression: string) {
+            var line: number = 0;
+            var column: number = 0;
+            let startColum: number = -1;//仅仅在多行的处理中使用
             var temp = "";
             var lastChar = "";
-            var state: number = 0;//0初始状态；1数字；2运算符；3引号字符串；4单词
+            var state: number = 0;//0初始状态；1数字；2运算符；3引号字符串；4单词；5行注释；6块注释
             var markType: string;
 
             var nodeList: WordNode[] = [];
@@ -106,20 +115,24 @@ namespace vm {
                     } else if (operatorCharMap[char]) {
                         //运算符
                         temp += char;
-                        if (doubleOpMap[char]) {
+                        if (doubleOpMap[char] || char == "/") {//有// 和 /* 等两种注释的情况
                             //可能是多运算符
                             state = 2;
+                        } else if (char == "-" && nodeList.length != 0 && nodeList[nodeList.length - 1].type < NodeType.P8) {
+                            //负数数字
+                            state = 1;
                         } else {
                             if (NodeType[temp as any] == undefined) {
                                 throw "表达式编译失败" + expression + " 不支持的运算符: " + temp;
                             }
-                            nodeList.push(new WordNode(NodeType[temp as any] as any, null))
+                            nodeList.push(new WordNode(NodeType[temp as any] as any, null, line, column - temp.length + 1, column))
                             reset()
                         }
 
                     } else if (markMap[char]) {
                         //引号
                         markType = char;
+                        startColum = column
                         state = 3
                     } else {
                         //单词
@@ -132,19 +145,29 @@ namespace vm {
                     if (code >= zeroCode && code <= nineCode || char == ".") {
                         temp += char
                     } else {
-                        nodeList.push(new WordNode(NodeType.number, parseFloat(temp)))
+                        nodeList.push(new WordNode(NodeType.number, parseFloat(temp), line, column - temp.length, column - 1))
                         reset();
                         run(char);//重新执行
                     }
                 } else if (state == 2) {
                     //运算符
-                    if (NodeType[(temp + char) as any] != undefined) {
+                    let mg = temp + char;
+                    if (mg == "//") {
+                        //行注释
+                        temp += char;
+                        state = 5;
+                    } else if (mg == "/*") {
+                        //块注释
+                        temp += char;
+                        startColum = column - 1;
+                        state = 6;
+                    } else if (NodeType[(mg) as any] != undefined) {
                         //识别到运算符
                         temp += char;
-                        nodeList.push(new WordNode(NodeType[temp as any] as any, null))
+                        nodeList.push(new WordNode(NodeType[temp as any] as any, null, line, column - temp.length + 1, column))
                         reset()
                     } else {
-                        nodeList.push(new WordNode(NodeType[temp as any] as any, null))
+                        nodeList.push(new WordNode(NodeType[temp as any] as any, null, line, column - temp.length, column - 1))
                         reset();
                         run(char);//重新执行
                     }
@@ -152,7 +175,13 @@ namespace vm {
                 } else if (state == 3) {
                     //引号
                     if (char == markType && lastChar != "\\") {
-                        nodeList.push(new WordNode(NodeType.string, temp))
+                        if (markType == "`") {
+                            let node = new WordNode(NodeType.string, temp, line, startColum, column)
+                            node.lineStart = line - (temp.match(/\n/g) || [])?.length
+                            nodeList.push(node)
+                        } else {
+                            nodeList.push(new WordNode(NodeType.string, temp, line, startColum, column))
+                        }
                         reset();
                     } else {
                         temp += char;
@@ -161,15 +190,37 @@ namespace vm {
                     //单词
                     if (spaceMap[char] || operatorCharMap[char] || markMap[char]) {
                         if (temp == "true" || temp == "false") {
-                            nodeList.push(new WordNode(NodeType.boolean, temp == "true"))
+                            nodeList.push(new WordNode(NodeType.boolean, temp == "true", line, column - temp.length, column - 1))
                         } else {
-                            nodeList.push(new WordNode(NodeType.word, temp))
+                            nodeList.push(new WordNode(NodeType.word, temp, line, column - temp.length, column - 1))
                         }
                         reset();
                         run(char);//重新执行
                     } else {
                         temp += char;
                     }
+                } else if (state == 5) {
+                    //行注释
+                    if (char == "\n" || char == "\r") {
+                        nodeList.push(new WordNode(NodeType.annotation, temp, line, column - temp.length, column))
+                        reset();
+                        //不需要重新执行，换行可以丢弃
+                    } else {
+                        temp += char
+                    }
+                } else if (state == 6) {
+                    //块注释
+                    if (lastChar + char == "*/") {
+                        temp += char;
+
+                        let node = new WordNode(NodeType.annotation, temp, line, startColum, column)
+                        node.lineStart = line - (temp.match(/\n/g) || [])?.length
+                        nodeList.push(node)
+                        reset();
+                    } else {
+                        temp += char
+                    }
+
                 }
 
             }
@@ -177,11 +228,18 @@ namespace vm {
             for (const char of expression) {
                 run(char)
                 lastChar = char;
+                if (char == "\n") {
+                    line++;
+                    column = 0;
+                } else {
+                    column++;
+                }
             }
             run(" ")//传入空格，使其收集最后的结束点
 
             return nodeList;
         }
+
 
         static toAST(nodeList: WordNode[], expression: string) {
             //1、读取左值
@@ -351,7 +409,7 @@ namespace vm {
                             }
                             if (right2.type == NodeType[")"]) {
                                 //无参函数
-                                linkNode(left, NodeType.function, []);
+                                linkNode(left, NodeType.call, []);
                                 currentPos += 2;
                             } else {
                                 //开始读取参数
@@ -365,7 +423,7 @@ namespace vm {
                                 if (nodeList[r.pos] == undefined || nodeList[r.pos].type != NodeType[")"]) {
                                     throw "语法错误，" + expression + "，缺少闭合符号 ')'"
                                 }
-                                linkNode(left, NodeType.function, parList);
+                                linkNode(left, NodeType.call, parList);
                                 currentPos = r.pos;
                             }
                             continue;
@@ -426,7 +484,7 @@ namespace vm {
 
         static toStringAST(ast: ASTNode | WordNode | ASTNode[]): string {
             if (ast instanceof ASTNode) {
-                if (ast.operator == NodeType.function) {
+                if (ast.operator == NodeType.call) {
                     return `(${this.toStringAST(ast.left!)}(${this.toStringAST(ast.right!)}))`
                 } else if (ast.left == null) {
                     return `(${NodeType[ast.operator]} ${this.toStringAST(ast.right!)})`
@@ -507,7 +565,7 @@ namespace vm {
                         case NodeType["string"]:
                         case NodeType["boolean"]:
                             return runLogic(ast.left)
-                        case NodeType["function"]:
+                        case NodeType["call"]:
                             let self: any;
                             let target: any;
                             if (ast.left instanceof ASTNode) {

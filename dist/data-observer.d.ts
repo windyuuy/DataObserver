@@ -124,45 +124,53 @@ declare namespace vm {
     export enum NodeType {
         "[" = 0,
         "(" = 1,
-        "." = 2,
-        P1 = 3,
-        "!" = 4,
-        P2 = 5,
-        "**" = 6,
-        P3 = 7,
-        "*" = 8,
-        "/" = 9,
-        "%" = 10,
-        P4 = 11,
-        "+" = 12,
-        "-" = 13,
-        P5 = 14,
-        ">" = 15,
-        "<" = 16,
-        ">=" = 17,
-        "<=" = 18,
-        P6 = 19,
-        "!=" = 20,
-        "==" = 21,
-        P7 = 22,
-        "&&" = 23,
-        "||" = 24,
-        P8 = 25,
-        "," = 26,
-        P9 = 27,
-        "]" = 28,
-        ")" = 29,
-        P10 = 30,
-        "number" = 31,
-        "word" = 32,
-        "string" = 33,
-        "boolean" = 34,
-        "function" = 35
+        "{" = 2,
+        "." = 3,
+        P1 = 4,
+        "!" = 5,
+        P2 = 6,
+        "**" = 7,
+        P3 = 8,
+        "*" = 9,
+        "/" = 10,
+        "%" = 11,
+        P4 = 12,
+        "+" = 13,
+        "-" = 14,
+        P5 = 15,
+        ">" = 16,
+        "<" = 17,
+        ">=" = 18,
+        "<=" = 19,
+        P6 = 20,
+        "!=" = 21,
+        "==" = 22,
+        P7 = 23,
+        "&&" = 24,
+        "||" = 25,
+        P8 = 26,
+        "," = 27,
+        P9 = 28,
+        "]" = 29,
+        ")" = 30,
+        "}" = 31,
+        P10 = 32,
+        "number" = 33,
+        "word" = 34,
+        "string" = 35,
+        "boolean" = 36,
+        "annotation" = 37,
+        "call" = 38,
+        "lambda" = 39
     }
     class WordNode {
         type: NodeType;
         value: any;
-        constructor(type: NodeType, value: any);
+        lineStart: number;
+        columnStart: number;
+        columnEnd: number;
+        lineEnd: number;
+        constructor(type: NodeType, value: any, lineStart: number, columnStart: number, columnEnd: number);
     }
     class ASTNode {
         left: ASTNode | WordNode | null;
