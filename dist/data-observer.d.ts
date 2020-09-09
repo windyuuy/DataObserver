@@ -159,9 +159,10 @@ declare namespace vm {
         "word" = 34,
         "string" = 35,
         "boolean" = 36,
-        "annotation" = 37,
-        "call" = 38,
-        "lambda" = 39
+        P11 = 37,
+        "annotation" = 38,
+        "call" = 39,
+        "lambda" = 40
     }
     class WordNode {
         type: NodeType;
@@ -188,6 +189,9 @@ declare namespace vm {
         static toAST(nodeList: WordNode[], expression: string): ASTNode;
         static toStringAST(ast: ASTNode | WordNode | ASTNode[], isRoot?: boolean): string;
         toString(): string;
+        static run(environment: {
+            [key: string]: any;
+        }, ast: WordNode | ASTNode | null): any;
         run(environment: {
             [key: string]: any;
         }): any;

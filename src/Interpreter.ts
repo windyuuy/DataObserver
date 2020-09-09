@@ -30,6 +30,7 @@ namespace vm {
         "word",
         "string",
         "boolean",
+        P11,
         "annotation",
 
         //组合，只会在AST中出现
@@ -244,6 +245,47 @@ namespace vm {
 
 
         static toAST(nodeList: WordNode[], expression: string) {
+            //生成括号关系
+            type R = WordNode | WordNode[]
+            var groupList: (R | R[])[] = []
+            var sumMap = [NodeType["("], NodeType["["], NodeType["{"]]
+            var readBracket = (start: number, list: (R | R[])[]) => {
+                let begin = nodeList[start];
+                let endType: NodeType | null = null;
+                if (sumMap[begin.type] !== undefined) {
+                    switch (begin.type) {
+                        case NodeType["("]:
+                            endType = NodeType[")"];
+                            break;
+                        case NodeType["["]:
+                            endType = NodeType["]"];
+                            break;
+                        case NodeType["{"]:
+                            endType = NodeType["}"];
+                            break;
+                        default:
+                            throw "异常"
+                    }
+                }
+                list.push(begin);
+                for (let i = start + 1; i < nodeList.length; i++) {
+                    let current = nodeList[i];
+                    if (endType != null && endType == current.type) {
+                        list.push(current);
+                        return i;
+                    } else if (sumMap[current.type] !== undefined) {
+                        var newList: WordNode[] = []
+                        i = readBracket(i, newList);
+                        list.push(newList);
+                    } else {
+                        list.push(current);
+                    }
+                }
+                return nodeList.length;
+            }
+            readBracket(0, groupList);
+
+
             //1、读取左值
             //2、读取运算符
             //3、读取右值，如果右值右边的运算符顺序>当前运算符，则递归读取右边完整的值
@@ -287,213 +329,93 @@ namespace vm {
              * 
              * 计算后返回ASTNode和新的开始点
              */
-            var startRead = (/*左值的位置，既开始位置*/pos: number, isRoot: boolean = false): { pos: number, node: ASTNode } => {
-                let currentPos = pos;
-                let endPos = nodeList.length - 1;
+            var readGroup = (group: (WordNode | any[])[]): ASTNode => {
 
-                let currentNode: ASTNode;
+                let startRead = (pos: number, endPos: number): { pos: number, node: ASTNode } => {
+                    let currentPos = pos;
+                    let currentNode: ASTNode;
 
-                let linkNode = (left: ASTNode | WordNode | null, op: NodeType, right: ASTNode | WordNode | ASTNode[] | null) => {
-                    if (currentNode != null && right == null) {
-                        return;//right为空则表示单值，不应该记录
-                    }
-                    if (currentNode == null) {
-                        if (right instanceof ASTNode && right.right == null) {
-                            currentNode = new ASTNode(left, op, right.left);
-                        } else {
-                            currentNode = new ASTNode(left, op, right);
+                    let joinNode = (node: ASTNode) => {
+                        if (currentNode != null) {
+                            node.left = currentNode;
                         }
-                    } else {
-                        if (right instanceof ASTNode && right.right == null) {
-                            var newNode = new ASTNode(currentNode, op, right.left);
-                        } else {
-                            var newNode = new ASTNode(currentNode, op, right);
-                        }
-                        currentNode = newNode;
-                    }
-                }
-                let joinNode = (node: ASTNode) => {
-                    if (currentNode == null) {
-                        currentNode = node;
-                    } else {
-                        node.left = currentNode;
                         currentNode = node;
                     }
-                }
+                    let maxCount = 10000
+                    let count = 0;
+                    while (currentPos <= endPos) {
+                        if (count++ >= maxCount) {
+                            throw "死循环"
+                        }
+                        let op = group[currentPos];
+                        if (op instanceof Array) {
+                            joinNode(readGroup(op));
+                            currentPos++;
+                        } else {
+                            if (op.type < NodeType.P9) {
+                                //运算符
+                                let right = groupList[currentPos + 1];
+                                let rightOp = groupList[currentPos + 2];
 
-                let maxCount = 10000
-                let count = 0;
-                while (currentPos <= endPos) {
-                    if (count++ >= maxCount) {
-                        throw "死循环"
-                    }
-                    let left = nodeList[currentPos];
-                    let errPos = `在 ${left.lineStart + 1}:${left.columnStart + 1}`;
-                    if (left.type < NodeType.P9) {
-                        //一开始就是运算符，直接计算返回
-                        if (left.type == NodeType["!"]) {
-                            let right = nodeList[currentPos + 1]
-                            if (right == null) {
-                                throw "语法错误，" + expression + "，无法找到运算符右值 '" + NodeType[left.type] + "' " + errPos;
-                            }
-                            if (right.type < NodeType.P9) {
-                                //右值也是运算符
-                                if (right.type == NodeType["("]) {
-                                    let r = startRead(currentPos + 1)
-                                    linkNode(null, NodeType["!"], r.node)
-                                    currentPos = r.pos;
-                                } else {
-                                    throw "语法错误，" + expression + "，运算符'" + NodeType[left.type] + "'的右值不合理，竟然是 '" + NodeType[right.type] + "' " + errPos;
-                                }
-                            } else {
-                                //验证优先级
-                                let right2 = nodeList[currentPos + 2];
-                                if (right2 != null && right2.type > NodeType.P10) {
-                                    throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' " + errPos;
-                                }
-                                if (right2 != null && getPN(right2) < getPN(left)) {
+                                if (right instanceof WordNode && right.type == NodeType.word && rightOp instanceof Array && rightOp[0] instanceof WordNode && rightOp[0].type == NodeType["("]) {
+                                    //函数调用
+                                    if (rightOp.length == 2) {
+                                        //无参函数
+                                        joinNode(new ASTNode(null, op.type, new ASTNode(right, NodeType.call, [])));
+                                    } else {
+                                        //开始读取参数
+                                        let parList: ASTNode[] = [];
+                                        let s = 1;
+                                        let stopList: number[] = []
+                                        rightOp.forEach((a, index) => {
+                                            if ((a as any).type == NodeType[","] || (a as any).type == NodeType[")"]) {
+                                                stopList.push(index);
+                                            }
+                                        })
+                                        for (let v of stopList) {
+                                            parList.push(readGroup(rightOp.slice(s, v - 1)))
+                                            s = v + 1;
+                                        }
+                                        joinNode(new ASTNode(null, op.type, new ASTNode(right, NodeType.call, parList)));
+                                    }
+                                    currentPos += 3;
+                                } else if (rightOp && rightOp instanceof WordNode && rightOp.type < NodeType.P9 && getPN(rightOp) < getPN(op)) {
                                     //右侧运算符优先
-                                    var r = startRead(currentPos + 1);
-                                    linkNode(null, left.type, r.node);
+                                    var r = startRead(currentPos + 1, groupList.length - 1);
+                                    joinNode(new ASTNode(null, op.type, r.node));
                                     currentPos = r.pos;
                                 } else {
                                     //从左到右的顺序
-                                    linkNode(null, left.type, right);
-                                    currentPos = currentPos + 1;
+                                    joinNode(new ASTNode(null, op.type, right instanceof Array ? readGroup(right) : right))
+                                    currentPos = currentPos + 2;
                                 }
-                            }
-
-                        } else if (left.type == NodeType["("]) {
-                            let r = startRead(currentPos + 1)
-                            let next = nodeList[r.pos];
-                            if (next == null || next.type != NodeType[")"]) {
-                                throw "语法错误，" + expression + "，缺少闭合符号 ')'" + errPos;
-                            }
-                            joinNode(r.node)
-                            currentPos = r.pos;
-                            if (!isRoot) {
-                                break;
-                            }
-
-                        } else if (left.type == NodeType["["]) {
-                            let r = startRead(currentPos + 1)
-                            let next = nodeList[r.pos];
-                            if (next == null || next.type != NodeType["]"]) {
-                                throw "语法错误，" + expression + "，缺少闭合符号 ']'" + errPos;
-                            }
-                            joinNode(r.node);
-                            currentPos = r.pos;
-                            if (!isRoot) {
-                                break;
-                            }
-                        } else if (left.type == NodeType["{"]) {
-                            let r = startRead(currentPos + 1)
-                            let next = nodeList[r.pos];
-                            if (next == null || next.type != NodeType["}"]) {
-                                throw "语法错误，" + expression + "，缺少闭合符号 '}'" + errPos;
-                            }
-                            linkNode(null, NodeType.lambda, r.node)
-                            currentPos = r.pos + 1;//跳过右括号，相当于完全读取掉
-                            if (!isRoot) {
-                                break;
-                            }
-                        } else {
-                            throw "语法错误，" + expression + "，无法匹配的运算符 '" + NodeType[left.type] + "' " + errPos;
-                        }
-                    } else {
-                        let op = nodeList[currentPos + 1];
-                        if (op == null || op.type > NodeType.P9 && op.type < NodeType.P10 || op.type == NodeType[","]) {
-                            //left依然要输出
-                            linkNode(left, left.type, null);
-                            if (op != null) {
-                                currentPos += 1;
-                            }
-                            break;//已结束
-                        }
-
-                        if (op.type > NodeType.P9) {
-                            throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[op.type] + "' " + errPos;
-                        }
-
-                        if (op.type == NodeType["("]) {
-                            //函数调用
-                            let right2 = nodeList[currentPos + 2];
-                            if (right2 == null) {
-                                throw "语法错误，" + expression + "，函数调用缺少右括号 " + errPos;
-                            }
-                            if (right2.type == NodeType[")"]) {
-                                //无参函数
-                                linkNode(left, NodeType.call, []);
-                                currentPos += 2;
+                            } else if (op.type > NodeType.P10 && op.type < NodeType.P11) {
+                                joinNode(new ASTNode(null, op.type, op.value))
+                                currentPos++;
                             } else {
-                                //开始读取参数
-                                let parList: ASTNode[] = [];
-                                let r = startRead(currentPos + 2)//读取括号里的内容
-                                parList.push(r.node.right ? r.node : r.node.left as any);
-                                while (nodeList[r.pos] && nodeList[r.pos].type == NodeType[","]) {
-                                    r = startRead(r.pos + 1)//读取括号里的内容
-                                    parList.push(r.node.right ? r.node : r.node.left as any);
-                                }
-                                if (nodeList[r.pos] == undefined || nodeList[r.pos].type != NodeType[")"]) {
-                                    throw "语法错误，" + expression + "，缺少闭合符号 ')'" + errPos;
-                                }
-                                linkNode(left, NodeType.call, parList);
-                                currentPos = r.pos;
-                            }
-                            continue;
-                        } else if (op.type == NodeType["["]) {
-                            //属性访问
-                            let right2 = nodeList[currentPos + 2];
-                            if (right2 == null) {
-                                throw "语法错误，" + expression + "，属性访问调用缺少右括号 " + errPos;
-                            } else if (right2.type == NodeType["]"]) {
-                                throw "语法错误，" + expression + "，[]中必须传入访问变量 " + errPos;
-                            }
-                            let r = startRead(currentPos + 2)//读取括号里的内容
-                            if (nodeList[r.pos] == null || nodeList[r.pos].type != NodeType["]"]) {
-                                throw "语法错误，" + expression + "，属性访问调用缺少右括号 " + errPos;
-                            }
-                            linkNode(left, NodeType["."], r.node);
-                            currentPos = r.pos;
-                            continue;
-                        }
-
-                        let right = nodeList[currentPos + 2];
-                        if (right == null) {
-                            throw "语法错误，" + expression + "，无法找到运算符右值 '" + NodeType[op.type] + "' " + errPos;
-                        }
-                        if (right.type < NodeType.P9) {
-                            //右值也是运算符
-                            if (right.type == NodeType["!"] || right.type == NodeType["("] || right.type == NodeType["["]) {
-                                let r = startRead(currentPos + 2)
-                                linkNode(left, op.type, r.node)
-                                currentPos = r.pos;
-                            } else {
-                                throw "语法错误，" + expression + "，运算符'" + NodeType[op.type] + "'的右值不合理，竟然是 '" + NodeType[right.type] + "' " + errPos;
-                            }
-                        } else {
-                            //验证优先级
-                            let right2 = nodeList[currentPos + 3];
-                            if (right2 != null && right2.type > NodeType.P10) {
-                                throw "语法错误，" + expression + "，期待是一个运算符但却是 '" + NodeType[right2.type] + "' " + errPos
-                            }
-                            if (right2 != null && getPN(right2) < getPN(op)) {
-                                //右侧运算符优先
-                                var r = startRead(currentPos + 2);
-                                linkNode(left, op.type, r.node);
-                                currentPos = r.pos;
-                            } else {
-                                //从左到右的顺序
-                                linkNode(left, op.type, right);
-                                currentPos = currentPos + 2;
+                                throw "意外的错误"
                             }
                         }
                     }
+                    return { node: currentNode!, pos: currentPos };
                 }
-                return { node: currentNode!, pos: currentPos }
+
+                let first = group[0];
+                if (first instanceof WordNode && first.type == NodeType["("]) {
+                    //只是个group，可以忽略前后的()
+                    return startRead(1, groupList.length - 2).node
+                } else if (first instanceof WordNode && first.type == NodeType["["]) {
+                    //.的另一种访问形式
+                    return new ASTNode(null, NodeType["."], startRead(1, groupList.length - 2).node);
+                } else if (first instanceof WordNode && first.type == NodeType["{"]) {
+                    //子表达式
+                    return new ASTNode(null, NodeType.lambda, startRead(1, groupList.length - 2).node);
+                } else {
+                    return startRead(0, groupList.length - 1).node;
+                }
             }
 
-            return startRead(0, true).node;
+            return readGroup(groupList);
         }
 
         static toStringAST(ast: ASTNode | WordNode | ASTNode[], isRoot = true): string {
@@ -530,7 +452,7 @@ namespace vm {
             return Interpreter.toStringAST(this.ast);
         }
 
-        run(environment: { [key: string]: any }): any {
+        static run(environment: { [key: string]: any }, ast: WordNode | ASTNode | null): any {
             var runLogic = (ast: WordNode | ASTNode | null): any => {
                 if (!ast) {
                     return null;
@@ -616,7 +538,24 @@ namespace vm {
                             }
                             let paramList = [];
                             for (let p of ast.right as ASTNode[]) {
-                                paramList.push(runLogic(p));
+                                if (p.operator == NodeType.lambda) {
+                                    //生成新的环境
+                                    let func = (a: any) => {
+                                        var newEv: { [key: string]: any };
+                                        if (isPrimitive(a)) {
+                                            newEv = { value: a }
+                                        } else {
+                                            newEv = a;
+                                        }
+                                        newEv.__proto__ = environment;
+                                        newEv._ = environment;
+
+                                        Interpreter.run(newEv, p.right as any)
+                                    }
+                                    paramList.push(func);
+                                } else {
+                                    paramList.push(runLogic(p));
+                                }
                             }
                             return func.apply(self || environment, paramList);
                     }
@@ -628,7 +567,11 @@ namespace vm {
                 }
                 throw "AST异常" + JSON.stringify(ast);
             }
-            return runLogic(this.ast);
+            return runLogic(ast);
+        }
+
+        run(environment: { [key: string]: any }) {
+            return Interpreter.run(environment, this.ast)
         }
     }
 
