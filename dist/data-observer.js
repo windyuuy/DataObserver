@@ -422,6 +422,8 @@ var vm;
             this.lineStart = lineStart;
             this.columnStart = columnStart;
             this.columnEnd = columnEnd;
+            //父节点
+            this.parent = null;
             this.lineEnd = lineStart;
         }
         return WordNode;
@@ -434,6 +436,12 @@ var vm;
             this.right = right;
             //父节点
             this.parent = null;
+            if (this.left) {
+                this.left.parent = this;
+            }
+            if (this.right) {
+                this.right.parent = this;
+            }
         }
         return ASTNode;
     }());
@@ -733,6 +741,12 @@ var vm;
                         }
                         if (node.right instanceof ASTNode && node.right.operator > NodeType.P10 && node.right.operator < NodeType.P11) {
                             node.right = node.right.left;
+                        }
+                        if (node.right) {
+                            node.right.parent = node;
+                        }
+                        if (node.left) {
+                            node.left.parent = node;
                         }
                         currentNode = node;
                     };

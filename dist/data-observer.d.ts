@@ -171,6 +171,7 @@ declare namespace vm {
         columnStart: number;
         columnEnd: number;
         lineEnd: number;
+        parent: ASTNode | null;
         constructor(type: NodeType, value: any, lineStart: number, columnStart: number, columnEnd: number);
     }
     class ASTNode {

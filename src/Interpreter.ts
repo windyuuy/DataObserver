@@ -41,6 +41,8 @@ namespace vm {
 
     class WordNode {
         public lineEnd: number;
+        //父节点
+        public parent: ASTNode | null = null;
         constructor(
             public type: NodeType,
             public value: any,
@@ -57,7 +59,14 @@ namespace vm {
             public left: ASTNode | WordNode | null,//一元运算符允许为空
             public operator: NodeType,
             public right: ASTNode | WordNode | ASTNode[] | null,//如果是函数调用会是一个列表
-        ) { }
+        ) {
+            if (this.left) {
+                this.left.parent = this;
+            }
+            if (this.right) {
+                (this.right as any).parent = this;
+            }
+        }
     }
 
     const zeroCode = "0".charCodeAt(0);
@@ -350,6 +359,13 @@ namespace vm {
                         if (node.right instanceof ASTNode && node.right.operator > NodeType.P10 && node.right.operator < NodeType.P11) {
                             node.right = node.right.left;
                         }
+                        if (node.right) {
+                            (node.right as any).parent = node;
+                        }
+                        if (node.left) {
+                            node.left.parent = node;
+                        }
+
                         currentNode = node;
                     }
 
