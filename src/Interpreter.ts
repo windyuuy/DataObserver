@@ -269,7 +269,8 @@ namespace vm {
             //生成括号关系
             type R = WordNode | WordNode[]
             var groupList: (R | R[])[] = []
-            var sumMap = [NodeType["("], NodeType["["], NodeType["{"]]
+            var sumMap: { [key: string]: boolean } = {};
+            [NodeType["("], NodeType["["], NodeType["{"]].forEach(k => sumMap[k] = true);
             var readBracket = (start: number, list: (R | R[])[], endType?: NodeType) => {
                 for (let i = start; i < nodeList.length; i++) {
                     let current = nodeList[i];

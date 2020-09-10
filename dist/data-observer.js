@@ -633,7 +633,8 @@ var vm;
         };
         Interpreter.toAST = function (nodeList, expression) {
             var groupList = [];
-            var sumMap = [NodeType["("], NodeType["["], NodeType["{"]];
+            var sumMap = {};
+            [NodeType["("], NodeType["["], NodeType["{"]].forEach(function (k) { return sumMap[k] = true; });
             var readBracket = function (start, list, endType) {
                 for (var i = start; i < nodeList.length; i++) {
                     var current = nodeList[i];
