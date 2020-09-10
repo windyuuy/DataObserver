@@ -643,7 +643,7 @@ var vm;
                                 nextEndType = NodeType["}"];
                                 break;
                             default:
-                                throw "异常";
+                                throw expression + "括号分析异常异常'" + NodeType[current.type] + "' " + current.lineStart + ":" + current.columnStart;
                         }
                         var newList = [current];
                         i = readBracket(i + 1, newList, nextEndType);
@@ -662,7 +662,7 @@ var vm;
                     while (!(errorPos instanceof WordNode)) {
                         errorPos = errorPos[0];
                     }
-                    throw "\u7F3A\u5C11\u95ED\u5408\u62EC\u53F7'" + NodeType[endType] + "'\uFF0C\u5728" + (errorPos.lineEnd + 1) + ":" + (errorPos.columnEnd + 1);
+                    throw expression + ("\u7F3A\u5C11\u95ED\u5408\u62EC\u53F7'" + NodeType[endType] + "'\uFF0C\u5728" + (errorPos.lineEnd + 1) + ":" + (errorPos.columnEnd + 1));
                 }
                 return nodeList.length;
             };
@@ -703,7 +703,7 @@ var vm;
                     return NodeType.P10;
                 }
                 else {
-                    throw "目标不是运算符" + NodeType[op.type] + " " + String(op.value) + ("\u5728 " + op.lineStart + ":" + op.columnStart + " - " + op.lineEnd + ":" + op.columnEnd);
+                    throw expression + " 目标不是运算符" + NodeType[op.type] + " " + String(op.value) + ("\u5728 " + op.lineStart + ":" + op.columnStart + " - " + op.lineEnd + ":" + op.columnEnd);
                 }
             };
             /**
@@ -770,7 +770,7 @@ var vm;
                     var count = 0;
                     while (currentPos <= endPos) {
                         if (count++ >= maxCount) {
-                            throw "死循环";
+                            throw "语法树分析死循环=>" + expression;
                         }
                         var op = group[currentPos];
                         if (op instanceof Array) {
@@ -815,7 +815,7 @@ var vm;
                                 currentPos++;
                             }
                             else {
-                                throw "意外的错误";
+                                throw expression + " 解析异常" + NodeType[op.type];
                             }
                         }
                     }

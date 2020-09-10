@@ -266,7 +266,7 @@ namespace vm {
                                 nextEndType = NodeType["}"];
                                 break;
                             default:
-                                throw "异常";
+                                throw expression + "括号分析异常异常'" + NodeType[current.type] + "' " + current.lineStart + ":" + current.columnStart;
                         }
                         var newList: WordNode[] = [current]
                         i = readBracket(i + 1, newList, nextEndType);
@@ -283,7 +283,7 @@ namespace vm {
                     while (!(errorPos instanceof WordNode)) {
                         errorPos = errorPos[0];
                     }
-                    throw `缺少闭合括号'${NodeType[endType]}'，在${errorPos.lineEnd + 1}:${errorPos.columnEnd + 1}`
+                    throw expression + `缺少闭合括号'${NodeType[endType]}'，在${errorPos.lineEnd + 1}:${errorPos.columnEnd + 1}`
                 }
                 return nodeList.length;
             }
@@ -317,7 +317,7 @@ namespace vm {
                 } else if (op.type < NodeType.P10) {
                     return NodeType.P10
                 } else {
-                    throw "目标不是运算符" + NodeType[op.type] + " " + String(op.value) + `在 ${op.lineStart}:${op.columnStart} - ${op.lineEnd}:${op.columnEnd}`;
+                    throw expression + " 目标不是运算符" + NodeType[op.type] + " " + String(op.value) + `在 ${op.lineStart}:${op.columnStart} - ${op.lineEnd}:${op.columnEnd}`;
                 }
             }
 
@@ -385,7 +385,7 @@ namespace vm {
                     let count = 0;
                     while (currentPos <= endPos) {
                         if (count++ >= maxCount) {
-                            throw "死循环"
+                            throw "语法树分析死循环=>" + expression;
                         }
                         let op = group[currentPos];
                         if (op instanceof Array) {
@@ -426,7 +426,7 @@ namespace vm {
                                 joinNode(new ASTNode(op, op.type, null))
                                 currentPos++;
                             } else {
-                                throw "意外的错误"
+                                throw expression + " 解析异常" + NodeType[op.type]
                             }
                         }
                     }
