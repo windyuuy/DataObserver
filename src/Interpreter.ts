@@ -278,6 +278,13 @@ namespace vm {
                         list.push(current);
                     }
                 }
+                if (endType != null && (list[list.length - 1] as WordNode).type != endType) {
+                    let errorPos = list[list.length - 1];
+                    while (!(errorPos instanceof WordNode)) {
+                        errorPos = errorPos[0];
+                    }
+                    throw `缺少闭合括号'${NodeType[endType]}'，在${errorPos.lineEnd + 1}:${errorPos.columnEnd + 1}`
+                }
                 return nodeList.length;
             }
             readBracket(0, groupList);
@@ -345,6 +352,35 @@ namespace vm {
                         }
                         currentNode = node;
                     }
+
+                    let readFunc = (nameNode: WordNode, paramNodeList: WordNode[]) => {
+                        //函数调用
+                        if (paramNodeList.length == 2) {
+                            //无参函数
+                            return new ASTNode(nameNode, NodeType.call, []);
+                        } else {
+                            //开始读取参数
+                            let parList: ASTNode[] = [];
+                            let s = 1;
+                            let stopList: number[] = []
+                            paramNodeList.forEach((a, index) => {
+                                if ((a as any).type == NodeType[","] || (a as any).type == NodeType[")"]) {
+                                    stopList.push(index);
+                                }
+                            })
+                            for (let v of stopList) {
+                                var p = readGroup(paramNodeList.slice(s, v));
+                                if (p.operator > NodeType.P10 && p.operator < NodeType.P11) {
+                                    parList.push(p.left as any)
+                                } else {
+                                    parList.push(p)
+                                }
+                                s = v + 1;
+                            }
+                            return new ASTNode(nameNode, NodeType.call, parList);
+                        }
+                    }
+
                     let maxCount = 10000
                     let count = 0;
                     while (currentPos <= endPos) {
@@ -355,6 +391,10 @@ namespace vm {
                         if (op instanceof Array) {
                             joinNode(readGroup(op));
                             currentPos++;
+                        } else if (op.type == NodeType.word && group[currentPos + 1] instanceof Array && (group[currentPos + 1] as any)[0] instanceof WordNode && (group[currentPos + 1] as any)[0].type == NodeType["("]) {
+                            //函数调用
+                            joinNode(readFunc(op, group[currentPos + 1] as any))
+                            currentPos += 2;
                         } else {
                             if (op.type < NodeType.P9) {
                                 //运算符
@@ -362,28 +402,10 @@ namespace vm {
                                 let rightOp = group[currentPos + 2];
 
                                 if (right instanceof WordNode && right.type == NodeType.word && rightOp instanceof Array && rightOp[0] instanceof WordNode && rightOp[0].type == NodeType["("]) {
-                                    //函数调用
-                                    if (rightOp.length == 2) {
-                                        //无参函数
-                                        joinNode(new ASTNode(null, op.type, new ASTNode(right, NodeType.call, [])));
-                                    } else {
-                                        //开始读取参数
-                                        let parList: ASTNode[] = [];
-                                        let s = 1;
-                                        let stopList: number[] = []
-                                        rightOp.forEach((a, index) => {
-                                            if ((a as any).type == NodeType[","] || (a as any).type == NodeType[")"]) {
-                                                stopList.push(index);
-                                            }
-                                        })
-                                        for (let v of stopList) {
-                                            parList.push(readGroup(rightOp.slice(s, v - 1)))
-                                            s = v + 1;
-                                        }
-                                        joinNode(new ASTNode(null, op.type, new ASTNode(right, NodeType.call, parList)));
-                                    }
+                                    let funcNode = readFunc(right, rightOp);
+                                    joinNode(new ASTNode(null, op.type, right))//插入名字
+                                    joinNode(funcNode);//插入函数执行块
                                     currentPos += 3;
-
                                 } else if (
                                     (right && right instanceof WordNode && right.type < NodeType.P9) // + !a 的情况
                                     ||
@@ -561,7 +583,7 @@ namespace vm {
                                         newEv.__proto__ = environment;
                                         newEv._ = environment;
 
-                                        Interpreter.run(newEv, p.right as any)
+                                        return Interpreter.run(newEv, p.right as any)
                                     }
                                     paramList.push(func);
                                 } else {
