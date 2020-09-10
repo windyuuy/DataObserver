@@ -43,6 +43,11 @@ namespace vm {
         public lineEnd: number;
         //父节点
         public parent: ASTNode | null = null;
+        /**
+         * 相关注释
+         */
+        public frontAnnotation: string | undefined;
+        public behindAnnotation: string | undefined;
         constructor(
             public type: NodeType,
             public value: any,
@@ -55,6 +60,13 @@ namespace vm {
     class ASTNode {
         //父节点
         public parent: ASTNode | null = null;
+
+        /**
+         * 相关注释
+         */
+        public frontAnnotation: string | undefined;
+        public behindAnnotation: string | undefined;
+
         constructor(
             public left: ASTNode | WordNode | null,//一元运算符允许为空
             public operator: NodeType,
@@ -346,8 +358,9 @@ namespace vm {
 
                 let startRead = (pos: number, endPos: number): { pos: number, node: ASTNode } => {
                     let currentPos = pos;
-                    let currentNode: ASTNode;
+                    let currentNode: undefined | ASTNode;
 
+                    let frontAnnotation: undefined | string;
                     let joinNode = (node: ASTNode) => {
                         if (currentNode != null) {
                             if (currentNode.operator > NodeType.P10 && currentNode.operator < NodeType.P11) {
@@ -367,6 +380,11 @@ namespace vm {
                         }
 
                         currentNode = node;
+
+                        if (frontAnnotation) {
+                            currentNode.frontAnnotation = frontAnnotation;
+                            frontAnnotation = undefined;
+                        }
                     }
 
                     let readFunc = (nameNode: WordNode, paramNodeList: WordNode[]) => {
@@ -440,6 +458,13 @@ namespace vm {
                                 }
                             } else if (op.type > NodeType.P10 && op.type < NodeType.P11) {
                                 joinNode(new ASTNode(op, op.type, null))
+                                currentPos++;
+                            } else if (op.type == NodeType.annotation) {
+                                if (currentNode != null) {
+                                    currentNode.behindAnnotation = op.value;
+                                } else {
+                                    frontAnnotation = op.value;
+                                }
                                 currentPos++;
                             } else {
                                 throw expression + " 解析异常" + NodeType[op.type]

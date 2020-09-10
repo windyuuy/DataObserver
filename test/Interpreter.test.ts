@@ -466,8 +466,8 @@ test("语法分析 复杂", () => {
     var str = vm.Interpreter.toStringAST(tree);
     expect(str).toBe("SUM(装备列表, {((等级 * 加成) + 100) - 10}, {等级 * 加成})")
 
-    var nodeList = vm.Interpreter.toWords('SUM({攻击力*(1+攻击力加成*p)})')
-    var tree = vm.Interpreter.toAST(nodeList, 'SUM({攻击力*(1+攻击力加成*p)})')
+    var nodeList = vm.Interpreter.toWords('SUM({攻击力*(1+攻击力加成*p)})//哈哈行a')
+    var tree = vm.Interpreter.toAST(nodeList, '/*略略略*/SUM(/*七七七*/{攻击力*(1+攻击力加成*p)})//嘻嘻嘻出现')
 
 
 
@@ -604,7 +604,7 @@ test("表达式运行测试", () => {
     var exp = new vm.Interpreter("'ab,cd'.split(',')")
     expect(exp.run(evn5).length).toBe(2)
 
-    var exp = new vm.Interpreter("SUM(list,{攻击力*(1+攻击力加成 )* _.p})")
+    var exp = new vm.Interpreter("/*嘻嘻嘻出现*/SUM(list/*哈哈哈*/,{攻击力*(1+攻击力加成 )* _.p})//嘻嘻嘻出现")
     expect(exp.run(evn5)).toBe(45 * 2)
 
 })

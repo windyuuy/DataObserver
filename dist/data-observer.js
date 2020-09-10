@@ -730,6 +730,7 @@ var vm;
                 var startRead = function (pos, endPos) {
                     var currentPos = pos;
                     var currentNode;
+                    var frontAnnotation;
                     var joinNode = function (node) {
                         if (currentNode != null) {
                             if (currentNode.operator > NodeType.P10 && currentNode.operator < NodeType.P11) {
@@ -749,6 +750,10 @@ var vm;
                             node.left.parent = node;
                         }
                         currentNode = node;
+                        if (frontAnnotation) {
+                            currentNode.frontAnnotation = frontAnnotation;
+                            frontAnnotation = undefined;
+                        }
                     };
                     var readFunc = function (nameNode, paramNodeList) {
                         //函数调用
@@ -826,6 +831,15 @@ var vm;
                             }
                             else if (op.type > NodeType.P10 && op.type < NodeType.P11) {
                                 joinNode(new ASTNode(op, op.type, null));
+                                currentPos++;
+                            }
+                            else if (op.type == NodeType.annotation) {
+                                if (currentNode != null) {
+                                    currentNode.behindAnnotation = op.value;
+                                }
+                                else {
+                                    frontAnnotation = op.value;
+                                }
                                 currentPos++;
                             }
                             else {

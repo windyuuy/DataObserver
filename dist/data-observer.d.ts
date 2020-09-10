@@ -172,6 +172,11 @@ declare namespace vm {
         columnEnd: number;
         lineEnd: number;
         parent: ASTNode | null;
+        /**
+         * 相关注释
+         */
+        frontAnnotation: string | undefined;
+        behindAnnotation: string | undefined;
         constructor(type: NodeType, value: any, lineStart: number, columnStart: number, columnEnd: number);
     }
     class ASTNode {
@@ -179,6 +184,11 @@ declare namespace vm {
         operator: NodeType;
         right: ASTNode | WordNode | ASTNode[] | null;
         parent: ASTNode | null;
+        /**
+         * 相关注释
+         */
+        frontAnnotation: string | undefined;
+        behindAnnotation: string | undefined;
         constructor(left: ASTNode | WordNode | null, //一元运算符允许为空
         operator: NodeType, right: ASTNode | WordNode | ASTNode[] | null);
     }
