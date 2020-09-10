@@ -249,34 +249,31 @@ namespace vm {
             type R = WordNode | WordNode[]
             var groupList: (R | R[])[] = []
             var sumMap = [NodeType["("], NodeType["["], NodeType["{"]]
-            var readBracket = (start: number, list: (R | R[])[]) => {
-                let begin = nodeList[start];
-                let endType: NodeType | null = null;
-                if (sumMap[begin.type] !== undefined) {
-                    switch (begin.type) {
-                        case NodeType["("]:
-                            endType = NodeType[")"];
-                            break;
-                        case NodeType["["]:
-                            endType = NodeType["]"];
-                            break;
-                        case NodeType["{"]:
-                            endType = NodeType["}"];
-                            break;
-                        default:
-                            throw "异常"
-                    }
-                }
-                list.push(begin);
-                for (let i = start + 1; i < nodeList.length; i++) {
+            var readBracket = (start: number, list: (R | R[])[], endType?: NodeType) => {
+                for (let i = start; i < nodeList.length; i++) {
                     let current = nodeList[i];
-                    if (endType != null && endType == current.type) {
+                    if (sumMap[current.type] !== undefined) {
+                        //发现括号
+                        let nextEndType: NodeType;
+                        switch (current.type) {
+                            case NodeType["("]:
+                                nextEndType = NodeType[")"];
+                                break;
+                            case NodeType["["]:
+                                nextEndType = NodeType["]"];
+                                break;
+                            case NodeType["{"]:
+                                nextEndType = NodeType["}"];
+                                break;
+                            default:
+                                throw "异常";
+                        }
+                        var newList: WordNode[] = [current]
+                        i = readBracket(i + 1, newList, nextEndType);
+                        list.push(newList);
+                    } else if (endType != null && endType == current.type) {
                         list.push(current);
                         return i;
-                    } else if (sumMap[current.type] !== undefined) {
-                        var newList: WordNode[] = []
-                        i = readBracket(i, newList);
-                        list.push(newList);
                     } else {
                         list.push(current);
                     }
@@ -337,7 +334,14 @@ namespace vm {
 
                     let joinNode = (node: ASTNode) => {
                         if (currentNode != null) {
-                            node.left = currentNode;
+                            if (currentNode.operator > NodeType.P10 && currentNode.operator < NodeType.P11) {
+                                node.left = currentNode.left;
+                            } else {
+                                node.left = currentNode;
+                            }
+                        }
+                        if (node.right instanceof ASTNode && node.right.operator > NodeType.P10 && node.right.operator < NodeType.P11) {
+                            node.right = node.right.left;
                         }
                         currentNode = node;
                     }
@@ -354,8 +358,8 @@ namespace vm {
                         } else {
                             if (op.type < NodeType.P9) {
                                 //运算符
-                                let right = groupList[currentPos + 1];
-                                let rightOp = groupList[currentPos + 2];
+                                let right = group[currentPos + 1];
+                                let rightOp = group[currentPos + 2];
 
                                 if (right instanceof WordNode && right.type == NodeType.word && rightOp instanceof Array && rightOp[0] instanceof WordNode && rightOp[0].type == NodeType["("]) {
                                     //函数调用
@@ -379,9 +383,16 @@ namespace vm {
                                         joinNode(new ASTNode(null, op.type, new ASTNode(right, NodeType.call, parList)));
                                     }
                                     currentPos += 3;
-                                } else if (rightOp && rightOp instanceof WordNode && rightOp.type < NodeType.P9 && getPN(rightOp) < getPN(op)) {
+
+                                } else if (
+                                    (right && right instanceof WordNode && right.type < NodeType.P9) // + !a 的情况
+                                    ||
+                                    (rightOp && rightOp instanceof WordNode && rightOp.type < NodeType.P9 && getPN(rightOp) < getPN(op)) // + b * c 的情况
+                                    ||
+                                    (rightOp && rightOp instanceof Array && rightOp[0] instanceof WordNode && rightOp[0].type == NodeType["["] && getPN(rightOp[0]) < getPN(op)) // + a["c"] 的情况
+                                ) {
                                     //右侧运算符优先
-                                    var r = startRead(currentPos + 1, groupList.length - 1);
+                                    var r = startRead(currentPos + 1, endPos);
                                     joinNode(new ASTNode(null, op.type, r.node));
                                     currentPos = r.pos;
                                 } else {
@@ -390,7 +401,7 @@ namespace vm {
                                     currentPos = currentPos + 2;
                                 }
                             } else if (op.type > NodeType.P10 && op.type < NodeType.P11) {
-                                joinNode(new ASTNode(null, op.type, op.value))
+                                joinNode(new ASTNode(op, op.type, null))
                                 currentPos++;
                             } else {
                                 throw "意外的错误"
@@ -403,15 +414,15 @@ namespace vm {
                 let first = group[0];
                 if (first instanceof WordNode && first.type == NodeType["("]) {
                     //只是个group，可以忽略前后的()
-                    return startRead(1, groupList.length - 2).node
+                    return startRead(1, group.length - 2).node
                 } else if (first instanceof WordNode && first.type == NodeType["["]) {
                     //.的另一种访问形式
-                    return new ASTNode(null, NodeType["."], startRead(1, groupList.length - 2).node);
+                    return new ASTNode(null, NodeType["."], startRead(1, group.length - 2).node);
                 } else if (first instanceof WordNode && first.type == NodeType["{"]) {
                     //子表达式
-                    return new ASTNode(null, NodeType.lambda, startRead(1, groupList.length - 2).node);
+                    return new ASTNode(null, NodeType.lambda, startRead(1, group.length - 2).node);
                 } else {
-                    return startRead(0, groupList.length - 1).node;
+                    return startRead(0, group.length - 1).node;
                 }
             }
 
