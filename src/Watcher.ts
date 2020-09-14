@@ -128,10 +128,12 @@ namespace vm {
             }
 
             //让new作为当前记录的依赖，并清空旧的
+            let tmp: any = this.depIds
             this.depIds = this.newDepIds
+            this.newDepIds = tmp;
             this.newDepIds.clear();
 
-            let tmp = this.deps
+            tmp = this.deps
             this.deps = this.newDeps
             this.newDeps = tmp
             this.newDeps.length = 0

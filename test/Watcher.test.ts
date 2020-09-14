@@ -109,6 +109,39 @@ test("深层数据绑定", () => {
     expect(view.subTestString).toEqual("测试2")
     expect(view.subTstNumber).toEqual(4)
 
+
+
+    var Boos = {
+        boss: {
+            active: false,
+            hpMax: 10,
+            hp: 0,
+        }
+    }
+    var newHost = vm.implementHost(Boos);
+
+    var progress = 0;
+
+    var w = newHost.$watch("boss.hp/boss.hpMax", (newVal, oldVal) => {
+        progress = newVal;
+    })
+    progress = w?.value;
+
+    vm.Tick.next();
+    Boos.boss = {
+        active: false,
+        hpMax: 10,
+        hp: 0,
+    }
+    vm.Tick.next();
+    expect(progress).toBe(0);
+
+    Boos.boss.hpMax = 10
+    Boos.boss.hp = 5;
+    vm.Tick.next();
+    expect(progress).toBe(0.5);
+
+
 })
 
 

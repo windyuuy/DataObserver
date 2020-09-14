@@ -16,7 +16,7 @@ namespace vm {
          * @param expOrFn 访问的数据路径，或数据值的计算函数，当路径中的变量或计算函数所访问的值发生变化时，将会被重新执行
          * @param cb 重新执行后，发生变化则会出发回调函数
          */
-        $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void): void;
+        $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void): Watcher | undefined;
 
         /**
          * 释放host，包括所有watch
@@ -38,7 +38,7 @@ namespace vm {
             implementEnvironment(this);
         }
 
-        $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void) {
+        $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void): Watcher | undefined {
             if (this.$isDestroyed) {
                 console.error("the host is destroyed", this);
                 return;
