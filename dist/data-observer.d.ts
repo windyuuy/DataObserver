@@ -109,7 +109,7 @@ declare namespace vm {
      * 讲使用.分隔的路径访问转换为函数。
      * @param path
      */
-    function parsePath(path: string): ((obj: any) => any) | undefined;
+    function parsePath(path: string): ((obj: any) => any);
     function isNative(Ctor: any): boolean;
 }
 declare namespace vm {

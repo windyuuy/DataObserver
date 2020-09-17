@@ -43,6 +43,9 @@ namespace vm {
                 console.error("the host is destroyed", this);
                 return;
             }
+            if (!((this as any).__ob__ instanceof Observer)) {
+                vm.observe(this);
+            }
             let watcher = new Watcher(this, expOrFn, cb)
             this.$watchers.push(watcher);
             return watcher;

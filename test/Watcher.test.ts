@@ -12,7 +12,6 @@ test("简单数值绑定", () => {
     }
 
     var host = new Host()
-    vm.observe(host)
     host.$watch("testString", (newVal, oldVal) => {
         view.testString = newVal;
     })
@@ -23,6 +22,11 @@ test("简单数值绑定", () => {
     host.testString = "哈哈哈"
     vm.Tick.next();
     expect(view.testString).toEqual("哈哈哈")
+
+
+    var host = new Host()
+
+
 })
 
 test("深层数据绑定", () => {
@@ -46,7 +50,6 @@ test("深层数据绑定", () => {
     }
 
     var host = new Host()
-    vm.observe(host)
     host.$watch("a.testString", (newVal, oldVal) => {
         view.testString = newVal;
     })
@@ -158,7 +161,6 @@ test("深层数组", () => {
     }
 
     var host = new Host()
-    vm.observe(host)
     host.$watch("list", (newVal, oldVal) => {
         view.length = newVal.length;
         view.list0 = newVal[0];
