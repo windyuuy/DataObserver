@@ -469,6 +469,23 @@ test("语法分析 复杂", () => {
     var nodeList = vm.Interpreter.toWords('SUM({攻击力*(1+攻击力加成*p)})//哈哈行a')
     var tree = vm.Interpreter.toAST(nodeList, '/*略略略*/SUM(/*七七七*/{攻击力*(1+攻击力加成*p)})//嘻嘻嘻出现')
 
+    var nodeList = vm.Interpreter.toWords('level<= MAX(RoleConfig,{level})*10')
+    var tree = vm.Interpreter.toAST(nodeList, 'level<= MAX(RoleConfig,{level})*10')
+    expect(tree.operator).toBe(vm.NodeType["<="]);
+    expect((tree.right as any).operator).toBe(vm.NodeType["*"]);
+
+
+    var nodeList = vm.Interpreter.toWords('level<= MAX(RoleConfig,{level}).level')
+    var tree = vm.Interpreter.toAST(nodeList, 'level<= MAX(RoleConfig,{level}).level')
+    expect(tree.operator).toBe(vm.NodeType["<="]);
+    expect((tree.right as any).operator).toBe(vm.NodeType["."]);
+
+    var nodeList = vm.Interpreter.toWords('level.MAX(RoleConfig,{level}).level')
+    var tree = vm.Interpreter.toAST(nodeList, 'level.MAX(RoleConfig,{level}).level')
+    expect(tree.operator).toBe(vm.NodeType["."]);
+    expect((tree.left as any).operator).toBe(vm.NodeType.call);
+    expect((tree.left as any).left.operator).toBe(vm.NodeType["."]);
+
 
 
 

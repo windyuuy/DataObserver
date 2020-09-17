@@ -818,10 +818,31 @@ var vm;
                                 var right = group[currentPos + 1];
                                 var rightOp = group[currentPos + 2];
                                 if (right instanceof WordNode && right.type == NodeType.word && rightOp instanceof Array && rightOp[0] instanceof WordNode && rightOp[0].type == NodeType["("]) {
+                                    //运算符右侧为函数调用，调用后，还需要考虑后面的运算符顺序
                                     var funcNode = readFunc(right, rightOp);
-                                    joinNode(new ASTNode(null, op.type, right)); //插入名字
-                                    joinNode(funcNode); //插入函数执行块
-                                    currentPos += 3;
+                                    var rightOp2 = group[currentPos + 3];
+                                    if (rightOp2 && rightOp2 instanceof WordNode && rightOp2.type < NodeType.P9 && getPN(rightOp2) < getPN(op) //+a().b 的情况
+                                        ||
+                                            (rightOp2 && rightOp2 instanceof Array && rightOp2[0] instanceof WordNode && rightOp2[0].type == NodeType["["] && getPN(rightOp2[0]) < getPN(op)) // +a()["c"] 的情况
+                                    ) {
+                                        //先执行函数，再执行后面的逻辑，最后回到当前运算符
+                                        var r = startRead(currentPos + 3, endPos);
+                                        r.node.left = funcNode;
+                                        joinNode(new ASTNode(null, op.type, r.node));
+                                        currentPos = r.pos;
+                                    }
+                                    else {
+                                        if (op.type == NodeType["."]) {
+                                            //优先插入名字，最后组成函数访问链接
+                                            joinNode(new ASTNode(null, op.type, right)); //插入名字
+                                            joinNode(funcNode); //插入函数执行块
+                                        }
+                                        else {
+                                            //先执行函数
+                                            joinNode(new ASTNode(null, op.type, funcNode));
+                                        }
+                                        currentPos += 3;
+                                    }
                                 }
                                 else if ((right && right instanceof WordNode && right.type < NodeType.P9) // + !a 的情况
                                     ||
