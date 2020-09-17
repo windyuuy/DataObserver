@@ -90,8 +90,6 @@ namespace vm {
             func = function (env: any) {
                 return i.run(env);
             }
-            pathCacheMap[path] = func;
-            return func;
         } else {
             //简单的.属性访问逻辑
             var segments = path.split('.');
@@ -102,9 +100,9 @@ namespace vm {
                 }
                 return obj
             }
-            pathCacheMap[path] = func;
-            return func;
         }
+        pathCacheMap[path] = func;
+        return func;
     }
 
     export function isNative(Ctor: any) {

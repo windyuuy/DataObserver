@@ -315,8 +315,6 @@ var vm;
             func = function (env) {
                 return i.run(env);
             };
-            pathCacheMap[path] = func;
-            return func;
         }
         else {
             //简单的.属性访问逻辑
@@ -330,9 +328,9 @@ var vm;
                 }
                 return obj;
             };
-            pathCacheMap[path] = func;
-            return func;
         }
+        pathCacheMap[path] = func;
+        return func;
     }
     vm.parsePath = parsePath;
     function isNative(Ctor) {
