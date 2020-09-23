@@ -487,7 +487,12 @@ test("语法分析 复杂", () => {
     expect((tree.left as any).left.operator).toBe(vm.NodeType["."]);
 
 
+    var nodeList = vm.Interpreter.toWords('level == null')
+    var tree = vm.Interpreter.toAST(nodeList, 'level == null')
+    expect(tree.operator).toBe(vm.NodeType["=="]);
+    expect((tree.right as any).type).toBe(vm.NodeType.null);
 
+    expect(vm.Interpreter.toStringAST(tree)).toBe("level == null")
 
 })
 
@@ -623,5 +628,11 @@ test("表达式运行测试", () => {
 
     var exp = new vm.Interpreter("/*嘻嘻嘻出现*/SUM(list/*哈哈哈*/,{攻击力*(1+攻击力加成 )* _.p})//嘻嘻嘻出现")
     expect(exp.run(evn5)).toBe(45 * 2)
+
+    var exp = new vm.Interpreter("level == null")
+    expect(exp.run(evn5)).toBe(true)
+
+    var exp = new vm.Interpreter("level != null")
+    expect(exp.run(evn5)).toBe(false)
 
 })

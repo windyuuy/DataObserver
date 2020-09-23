@@ -159,10 +159,11 @@ declare namespace vm {
         "word" = 34,
         "string" = 35,
         "boolean" = 36,
-        P11 = 37,
-        "annotation" = 38,
-        "call" = 39,
-        "lambda" = 40
+        "null" = 37,
+        P11 = 38,
+        "annotation" = 39,
+        "call" = 40,
+        "lambda" = 41
     }
     class WordNode {
         type: NodeType;

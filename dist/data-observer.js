@@ -419,11 +419,12 @@ var vm;
         NodeType[NodeType["word"] = 34] = "word";
         NodeType[NodeType["string"] = 35] = "string";
         NodeType[NodeType["boolean"] = 36] = "boolean";
-        NodeType[NodeType["P11"] = 37] = "P11";
-        NodeType[NodeType["annotation"] = 38] = "annotation";
+        NodeType[NodeType["null"] = 37] = "null";
+        NodeType[NodeType["P11"] = 38] = "P11";
+        NodeType[NodeType["annotation"] = 39] = "annotation";
         //组合，只会在AST中出现
-        NodeType[NodeType["call"] = 39] = "call";
-        NodeType[NodeType["lambda"] = 40] = "lambda";
+        NodeType[NodeType["call"] = 40] = "call";
+        NodeType[NodeType["lambda"] = 41] = "lambda";
     })(NodeType = vm.NodeType || (vm.NodeType = {}));
     var WordNode = /** @class */ (function () {
         function WordNode(type, value, lineStart, columnStart, columnEnd) {
@@ -590,6 +591,9 @@ var vm;
                     if (spaceMap[char] || operatorCharMap[char] || markMap[char]) {
                         if (temp == "true" || temp == "false") {
                             nodeList.push(new WordNode(NodeType.boolean, temp == "true", line, column - temp.length, column - 1));
+                        }
+                        else if (temp == "null") {
+                            nodeList.push(new WordNode(NodeType.null, null, line, column - temp.length, column - 1));
                         }
                         else {
                             nodeList.push(new WordNode(NodeType.word, temp, line, column - temp.length, column - 1));

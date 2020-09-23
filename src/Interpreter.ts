@@ -30,6 +30,7 @@ namespace vm {
         "word",
         "string",
         "boolean",
+        "null",
         P11,
         "annotation",
 
@@ -215,6 +216,8 @@ namespace vm {
                     if (spaceMap[char] || operatorCharMap[char] || markMap[char]) {
                         if (temp == "true" || temp == "false") {
                             nodeList.push(new WordNode(NodeType.boolean, temp == "true", line, column - temp.length, column - 1))
+                        } else if (temp == "null") {
+                            nodeList.push(new WordNode(NodeType.null, null, line, column - temp.length, column - 1))
                         } else {
                             nodeList.push(new WordNode(NodeType.word, temp, line, column - temp.length, column - 1))
                         }
