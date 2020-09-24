@@ -671,7 +671,11 @@ namespace vm {
         }
 
         run(environment: { [key: string]: any }) {
-            return Interpreter.run(environment, this.ast)
+            try {
+                return Interpreter.run(environment, this.ast)
+            } catch (e) {
+                throw this.expression + "\n" + (e instanceof Error ? e.message : e)
+            }
         }
     }
 

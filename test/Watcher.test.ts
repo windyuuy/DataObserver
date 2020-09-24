@@ -258,3 +258,37 @@ test("watch注解", () => {
     expect(view.newValue).toBe("哈哈哈666")
 
 })
+
+test("tick", () => {
+    var Boos = {
+        boss: {
+            active: false,
+            hpMax: 10,
+            hp: 5,
+        }
+    }
+    var newHost = vm.implementHost(Boos);
+
+    var progress = 0;
+
+    var w = newHost.$watch("boss.hp/boss.hpMax", (newVal, oldVal) => {
+        progress = newVal;
+    })
+    progress = w?.value;
+
+    vm.Tick.next();
+    expect(progress).toBe(0.5);
+
+    Boos.boss = null as any;
+    vm.Tick.next();
+    expect(progress).toBe(0.5);
+
+    Boos.boss = {
+        active: false,
+        hpMax: 10,
+        hp: 1,
+    }
+    vm.Tick.next();
+    expect(progress).toBe(0.1);
+
+})

@@ -254,6 +254,7 @@ declare namespace vm {
 declare namespace vm {
     class Tick {
         protected static temp: Watcher[];
+        protected static errorTemp: Watcher[];
         static queue: Watcher[];
         static queueMap: IIdMap;
         static add(w: Watcher): void;

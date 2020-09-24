@@ -1071,7 +1071,12 @@ var vm;
             return runLogic(ast);
         };
         Interpreter.prototype.run = function (environment) {
-            return Interpreter.run(environment, this.ast);
+            try {
+                return Interpreter.run(environment, this.ast);
+            }
+            catch (e) {
+                throw this.expression + "\n" + (e instanceof Error ? e.message : e);
+            }
         };
         return Interpreter;
     }());
@@ -1267,11 +1272,25 @@ var vm;
             this.temp = temp;
             for (var _i = 0, temp_2 = temp; _i < temp_2.length; _i++) {
                 var w = temp_2[_i];
-                w.run();
+                try {
+                    w.run();
+                }
+                catch (e) {
+                    console.error(e);
+                    this.errorTemp.push(w);
+                }
+            }
+            if (this.errorTemp.length > 0) {
+                for (var _a = 0, _b = this.errorTemp; _a < _b.length; _a++) {
+                    var w = _b[_a];
+                    this.queue.push(w); //失败的表达式将每帧重复执行
+                }
             }
             temp.length = 0;
+            this.errorTemp.length = 0;
         };
         Tick.temp = [];
+        Tick.errorTemp = [];
         Tick.queue = [];
         Tick.queueMap = new vm.IdMap();
         return Tick;
