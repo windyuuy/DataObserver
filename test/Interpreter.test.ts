@@ -189,6 +189,18 @@ test("词法分析", () => {
     expect(nodeList[6].columnStart).toEqual(15)
     expect(nodeList[6].columnEnd).toEqual(7)
 
+    var nodeList = vm.Interpreter.toWords("-1")
+    expect(nodeList.length).toBe(1);
+    expect(nodeList[0].type).toBe(vm.NodeType.number);
+    expect(nodeList[0].value).toBe(-1);
+
+    var nodeList = vm.Interpreter.toWords("CALL(-1,-1,-1)")
+    expect(nodeList[0].value).toBe("CALL");
+    expect(nodeList[2].value).toBe(-1);
+    expect(nodeList[4].value).toBe(-1);
+    expect(nodeList[6].value).toBe(-1);
+
+
 
 })
 
@@ -374,6 +386,15 @@ test("语法分析", () => {
     expect((tree.right as any)[2].operator).toBe(vm.NodeType["-"])
     expect((tree.right as any)[2].left.value).toBe("d")
     expect((tree.right as any)[2].right.value).toBe(1)
+
+
+})
+
+test("!cur.greatProperty || cur.greatProperty.length <= 0", () => {
+    var nodeList = vm.Interpreter.toWords("!cur.greatProperty || cur.greatProperty.length <= 0")
+    var tree = vm.Interpreter.toAST(nodeList, "!cur.greatProperty || cur.greatProperty.length <= 0")
+
+    expect(tree.operator).toBe(vm.NodeType["||"])
 
 
 })

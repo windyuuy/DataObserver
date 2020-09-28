@@ -13,6 +13,7 @@ namespace vm {
 
     export enum NodeType {
         //运算符
+        P0,
         "[", "(", "{", ".", P1,
         "!", P2,
         "**", P3,
@@ -20,10 +21,10 @@ namespace vm {
         "+", "-", P5,
         ">", "<", ">=", "<=", P6,
         "!=", "==", P7,
-        "&&", "||", P8,
-        ",", P9,
+        "&&", P8, "||", P9,
+        ",", P10,
 
-        "]", ")", "}", P10,//结束符号
+        "]", ")", "}", P11,//结束符号
 
         //值
         "number",
@@ -31,7 +32,7 @@ namespace vm {
         "string",
         "boolean",
         "null",
-        P11,
+        P12,
         "annotation",
 
         //组合，只会在AST中出现
@@ -58,10 +59,11 @@ namespace vm {
         ) { this.lineEnd = lineStart }
     }
 
-    class ASTNode {
-        //父节点
-        public parent: ASTNode | null = null;
+    type ASTNode = ValueASTNode | BracketASTNode | UnitaryASTNode | BinaryASTNode | CallASTNode
 
+    class ASTNodeBase {
+        //父节点
+        public parent: UnitaryASTNode | BinaryASTNode | CallASTNode | null = null;
         /**
          * 相关注释
          */
@@ -69,16 +71,83 @@ namespace vm {
         public behindAnnotation: string | undefined;
 
         constructor(
-            public left: ASTNode | WordNode | null,//一元运算符允许为空
-            public operator: NodeType,
-            public right: ASTNode | WordNode | ASTNode[] | null,//如果是函数调用会是一个列表
+            /**
+             * 操作符
+             */
+            public operator: NodeType
         ) {
-            if (this.left) {
-                this.left.parent = this;
-            }
-            if (this.right) {
-                (this.right as any).parent = this;
-            }
+
+        }
+
+    }
+
+    class ValueASTNode extends ASTNodeBase {
+        constructor(
+            public value: WordNode
+
+        ) {
+            super(value.type);
+        }
+    }
+
+    class BracketASTNode extends ASTNodeBase {
+        constructor(
+            public operator: NodeType,
+            public node: ASTNode
+        ) {
+            super(operator);
+        }
+
+    }
+
+    class UnitaryASTNode extends ASTNodeBase {
+        constructor(
+            public operator: NodeType,
+            /**
+             * 一元表达式的右值
+             */
+            public right: ASTNode
+        ) {
+            super(operator);
+            this.right.parent = this;
+        }
+    }
+
+    class BinaryASTNode extends ASTNodeBase {
+        constructor(
+            /**
+             * 二元表达式的左值
+             */
+            public left: ASTNode,
+            /**
+             * 运算符
+             */
+            public operator: NodeType,
+            /**
+             * 二元表达式的左值
+             */
+            public right: ASTNode
+        ) {
+            super(operator);
+            this.left.parent = this;
+            this.right.parent = this;
+        }
+    }
+
+    class CallASTNode extends ASTNodeBase {
+        constructor(
+            /**
+             * 函数访问节点
+             */
+            public left: ASTNode,
+            /**
+             * 函数参数列表
+             */
+            public parameters: ASTNode[]
+        ) {
+            super(NodeType.call);
+            this.left.parent = this;
+            this.parameters.forEach(a => a.parent = this);
         }
     }
 
@@ -105,11 +174,13 @@ namespace vm {
 
         ast: ASTNode;
 
+        astErrorList: string[] = [];
+
         constructor(
             public expression: string
         ) {
 
-            this.ast = Interpreter.toAST(Interpreter.toWords(this.expression), this.expression);
+            this.ast = Interpreter.toAST(Interpreter.toWords(this.expression), this.expression, this.astErrorList);
         }
 
         static toWords(expression: string) {
@@ -143,7 +214,7 @@ namespace vm {
                         if (doubleOpMap[char] || char == "/") {//有// 和 /* 等两种注释的情况
                             //可能是多运算符
                             state = 2;
-                        } else if (char == "-" && nodeList.length != 0 && nodeList[nodeList.length - 1].type < NodeType.P8) {
+                        } else if (char == "-" && (nodeList.length != 0 && nodeList[nodeList.length - 1].type < NodeType.P9 || nodeList.length == 0)) {
                             //负数数字
                             state = 1;
                         } else {
@@ -267,17 +338,39 @@ namespace vm {
             return nodeList;
         }
 
+        static toAST(nodeList: WordNode[], expression: string, errorList: string[]) {
+            //根据运算符优先级进行分组
+            type Node = WordNode[] | WordNode | ASTNode;
+            let bracketList: Node[] = nodeList;
 
-        static toAST(nodeList: WordNode[], expression: string) {
-            //生成括号关系
-            type R = WordNode | WordNode[]
-            var groupList: (R | R[])[] = []
-            var sumMap: { [key: string]: boolean } = {};
-            [NodeType["("], NodeType["["], NodeType["{"]].forEach(k => sumMap[k] = true);
-            var readBracket = (start: number, list: (R | R[])[], endType?: NodeType) => {
+            let bracketMap: { [key: string]: boolean } = {};
+            [NodeType["("], NodeType["["], NodeType["{"]].forEach(k => bracketMap[k] = true);
+
+            let getWordNode = (node: Node) => {
+                while (node instanceof Array) {
+                    node = node[0];
+                }
+                if (node instanceof WordNode) {
+                    return node;
+                }
+            }
+
+            let pushError = (node: Node, msg: string) => {
+                let errorPos = getWordNode(node)!;
+                let errorMsg = expression + msg;
+                if (errorPos) {
+                    errorMsg += `，在${errorPos.lineEnd + 1}:${errorPos.columnEnd + 1}。`
+                }
+                errorList.push(expression + msg)
+            }
+
+            /**
+             * 将括号按层级分组成数组
+             */
+            let convertBracket = (start: number, list: Node[], endType?: NodeType) => {
                 for (let i = start; i < nodeList.length; i++) {
                     let current = nodeList[i];
-                    if (sumMap[current.type] !== undefined) {
+                    if (bracketMap[current.type] !== undefined) {
                         //发现括号
                         let nextEndType: NodeType;
                         switch (current.type) {
@@ -294,7 +387,7 @@ namespace vm {
                                 throw expression + "括号分析异常异常'" + NodeType[current.type] + "' " + current.lineStart + ":" + current.columnStart;
                         }
                         var newList: WordNode[] = [current]
-                        i = readBracket(i + 1, newList, nextEndType);
+                        i = convertBracket(i + 1, newList, nextEndType);
                         list.push(newList);
                     } else if (endType != null && endType == current.type) {
                         list.push(current);
@@ -304,246 +397,233 @@ namespace vm {
                     }
                 }
                 if (endType != null && (list[list.length - 1] as WordNode).type != endType) {
-                    let errorPos = list[list.length - 1];
-                    while (!(errorPos instanceof WordNode)) {
-                        errorPos = errorPos[0];
-                    }
-                    throw expression + `缺少闭合括号'${NodeType[endType]}'，在${errorPos.lineEnd + 1}:${errorPos.columnEnd + 1}`
+                    pushError(list[list.length - 1], `缺少闭合括号'${NodeType[endType]}'`);
+                    //自动补充一个符号
+                    list.push(new WordNode(endType, null, 0, 0, 0));
                 }
                 return nodeList.length;
             }
-            readBracket(0, groupList);
 
 
-            //1、读取左值
-            //2、读取运算符
-            //3、读取右值，如果右值右边的运算符顺序>当前运算符，则递归读取右边完整的值
-            //4、最终形成可直接执行的树
+            var unaryExp = (list: Node[], startPriority: number, endPriority: number) => {
+                if (list.length <= 1) {
+                    return list;
+                }
+                //当前环境下单目运算符只会在值的左边
+                //连续多个单目运算符从右往左组合运算
+                let rlist: Node[] = []
+                let currentAST: ASTNode | undefined;
+                for (let i = list.length - 1; i >= 0; i--) {
+                    let a = list[i]
+                    let b = list[i - 1]
+                    if (b instanceof WordNode && b.type > startPriority && b.type < endPriority) {
+                        if (a == null) {
+                            pushError(a, "一元运算符" + NodeType[b.type] + "缺少右值");
+                            a = new WordNode(NodeType.boolean, true, 0, 0, 0);//自动补充
+                        }
+                        if (currentAST == null) {
+                            //第一次发现
+                            currentAST = new UnitaryASTNode(b.type, genAST([a]));
+                        } else {
+                            //多个单目运算符连续
+                            currentAST = new UnitaryASTNode(b.type, currentAST);
+                        }
+                    } else {
+                        if (currentAST) {
+                            //一轮连续的单目运算符组合完毕
+                            rlist.push(currentAST);
+                            currentAST = undefined;
+                        }
+                        rlist.push(a);
+                    }
+                }
+                if (currentAST) {
+                    //边界对象不要遗留
+                    rlist.push(currentAST);
+                }
+                return rlist.reverse();//转为正常的顺序
+            }
 
-            var getPN = (op: WordNode) => {
-                if (op.type < NodeType.P1) {
-                    return NodeType.P1
-                } else if (op.type < NodeType.P2) {
-                    return NodeType.P2
-                } else if (op.type < NodeType.P3) {
-                    return NodeType.P3
-                } else if (op.type < NodeType.P4) {
-                    return NodeType.P4
-                } else if (op.type < NodeType.P5) {
-                    return NodeType.P5
-                } else if (op.type < NodeType.P6) {
-                    return NodeType.P6
-                } else if (op.type < NodeType.P7) {
-                    return NodeType.P7
-                } else if (op.type < NodeType.P8) {
-                    return NodeType.P8
-                } else if (op.type < NodeType.P9) {
-                    return NodeType.P9
-                } else if (op.type < NodeType.P10) {
-                    return NodeType.P10
+            var binaryExp = (list: Node[], startPriority: number, endPriority: number) => {
+                if (list.length <= 1) {
+                    return list;
+                }
+                let rlist: Node[] = []
+                let currentAST: ASTNode | undefined;
+                for (let i = 1, l = list.length; i < l; i++) {
+                    let a = list[i - 1];
+                    let b = list[i];
+                    let c = list[i + 1];
+                    if (b instanceof WordNode && b.type > startPriority && b.type < endPriority) {
+                        if (c == null) {
+                            pushError(a, "二元运算符" + NodeType[b.type] + "缺少右值");
+                            c = new WordNode(NodeType.number, 0, 0, 0, 0);//自动补充
+                        }
+                        if (currentAST == null) {
+                            //第一次发现
+                            currentAST = new BinaryASTNode(genAST([a]), b.type, genAST([c]));
+                        } else {
+                            //多次双目运算符连续
+                            currentAST = new BinaryASTNode(currentAST, b.type, genAST([c]));
+                        }
+
+                        i++;//跳过c的遍历
+
+                        //特殊处理 . 和 [] 后续逻辑，可能会紧跟着函数调用
+                        let d = list[i + 2];
+                        if (endPriority == NodeType.P1 && d instanceof Array && d[0] instanceof WordNode && d[0].type == NodeType["("]) {
+                            currentAST = new CallASTNode(currentAST, genParamList(d));
+
+                            i++;//跳过d的遍历
+                        }
+
+                    }
+
+                    //特殊处理，仅处理a['b']中括号的访问方式。
+                    else if (currentAST && b instanceof Array && b[0] instanceof WordNode && b[0].type == NodeType["["]) {
+                        //中括号方式访问属性
+                        currentAST = new BinaryASTNode(currentAST, NodeType["["], genAST(b));
+
+                        //特殊处理 . 和 [] 后续逻辑，可能会紧跟着函数调用
+                        if (endPriority == NodeType.P1 && c instanceof Array && c[0] instanceof WordNode && c[0].type == NodeType["("]) {
+                            currentAST = new CallASTNode(currentAST, genParamList(c));
+
+                            i++//跳过c的遍历
+                        }
+
+                    } else {
+                        if (currentAST) {
+                            //一轮连续的双目运算符组合完毕
+                            rlist.push(currentAST);
+                            currentAST = undefined;
+                        }
+                        if (i == 1) {//由于是从1开始遍历的，因此需要保留0的值
+                            rlist.push(a);
+                        }
+                        rlist.push(b);
+                    }
+
+                }
+
+                if (currentAST) {
+                    //边界对象不要遗留
+                    rlist.push(currentAST);
+                }
+
+                return list;
+            }
+
+            let splice = (list: Node[], sp: NodeType): Node[][] => {
+                let r: Node[][] = [];
+                let current: Node[] = [];
+                for (let l of list) {
+                    //这里会忽略括号
+                    if (l instanceof WordNode) {
+                        if (l.type == sp) {
+                            //产生切割
+                            if (current.length > 0) {
+                                r.push(current);
+                                current = [];
+                            }
+                        } else if (l.type == NodeType["("] || l.type == NodeType[")"] || l.type == NodeType["["] || l.type == NodeType["]"] || l.type == NodeType["{"] || l.type == NodeType["}"]) {
+                            //跳过该字符
+                        } else {
+                            current.push(l);
+                        }
+                    } else {
+                        current.push(l);
+                    }
+                }
+                if (current.length > 0) {
+                    r.push(current);
+                }
+                return r;
+            }
+
+            let genParamList = (list: Node[]): ASTNode[] => {
+                let paramList = splice(list, NodeType[","]);
+                let rlist: ASTNode[] = [];
+                for (let p of paramList) {
+                    rlist.push(genAST(p))
+                }
+                return rlist;
+            }
+
+            let genAST = (sourcelist: Node[]): ASTNode => {
+                if (sourcelist.length == 1 && sourcelist[0] instanceof ASTNodeBase) {
+                    return sourcelist[0];
+                }
+                let list = sourcelist;
+
+                //进行括号处理
+                let bracketType: NodeType | undefined;
+                let a = list[0]; let b = list[1];
+                if (a instanceof WordNode && b instanceof WordNode &&
+                    (a.type == NodeType["("] && b.type == NodeType[")"] ||
+                        a.type == NodeType["["] && b.type == NodeType["]"] ||
+                        a.type == NodeType["{"] && b.type == NodeType["}"])
+                ) {
+                    bracketType = a.type;
+                    list = list.slice(1, list.length - 1)
+                }
+
+                list = binaryExp(list, NodeType.P0, NodeType.P1)//分组  . 和 [] 形成访问连接，包括后面的函数
+                list = unaryExp(list, NodeType.P1, NodeType.P2)//分组  ! ，进行一元表达式分组
+                list = binaryExp(list, NodeType.P2, NodeType.P3)//分组  **，进行2元表达式分组
+                list = binaryExp(list, NodeType.P3, NodeType.P4)//分组  * / %，进行2元表达式分组
+                list = binaryExp(list, NodeType.P4, NodeType.P5)//分组  + -，进行2元表达式分组
+                list = binaryExp(list, NodeType.P5, NodeType.P6)//分组  > < >= <=，进行2元表达式分组
+                list = binaryExp(list, NodeType.P6, NodeType.P7)//分组  != ==，进行2元表达式分组
+                list = binaryExp(list, NodeType.P7, NodeType.P8)//分组  && ，进行2元表达式分组
+                list = binaryExp(list, NodeType.P8, NodeType.P9)//分组  ||，进行2元表达式分组
+
+                let result: ASTNode;
+                if (list.length == 1 && list[0] instanceof ASTNodeBase) {
+                    //正常返回
+                    result = list[0];
+                } else if (list.length == 1 && list[0] instanceof WordNode) {
+                    //单纯的数值
+                    result = new ValueASTNode(list[0]);
+                } else if (list.length > 1) {
+                    pushError(sourcelist[0], "解析后节点列表无法归一")
+                    result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
+                } else if (list.length == 0) {
+                    pushError(sourcelist[0], "无法正确解析列表")
+                    result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
                 } else {
-                    throw expression + " 目标不是运算符" + NodeType[op.type] + " " + String(op.value) + `在 ${op.lineStart}:${op.columnStart} - ${op.lineEnd}:${op.columnEnd}`;
+                    result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
+                }
+
+                if (bracketType !== undefined) {
+                    return new BracketASTNode(bracketType, result);
+                } else {
+                    return result;
                 }
             }
 
-            /**
-             * 解析的起点，此时会产生左值，并向下持续链接。
-             * 一般为：
-             * 1. 语句的一开始 例如： a+b+c 的 a
-             * 2. 运算符优先级的一开始 例如： a+b*c+d 的 b
-             * 3. 括号内的一开始 例如 a*(b+c) 的 b
-             * 4. 函数调用参数的一开始，例如 a(b+c,d+e) 中的 b 和 d
-             * 
-             * 所有需要重新开始的地方都应该调用该函数
-             * 
-             * 计算后返回ASTNode和新的开始点
-             */
-            var readGroup = (group: (WordNode | any[])[]): ASTNode => {
-
-                let startRead = (pos: number, endPos: number): { pos: number, node: ASTNode } => {
-                    let currentPos = pos;
-                    let currentNode: undefined | ASTNode;
-
-                    let frontAnnotation: undefined | string;
-                    let joinNode = (node: ASTNode) => {
-                        if (currentNode != null) {
-                            if (currentNode.operator > NodeType.P10 && currentNode.operator < NodeType.P11) {
-                                node.left = currentNode.left;
-                            } else {
-                                node.left = currentNode;
-                            }
-                        }
-                        if (node.right instanceof ASTNode && node.right.operator > NodeType.P10 && node.right.operator < NodeType.P11) {
-                            node.right = node.right.left;
-                        }
-                        if (node.right) {
-                            (node.right as any).parent = node;
-                        }
-                        if (node.left) {
-                            node.left.parent = node;
-                        }
-
-                        currentNode = node;
-
-                        if (frontAnnotation) {
-                            currentNode.frontAnnotation = frontAnnotation;
-                            frontAnnotation = undefined;
-                        }
-                    }
-
-                    let readFunc = (nameNode: WordNode, paramNodeList: WordNode[]) => {
-                        //函数调用
-                        if (paramNodeList.length == 2) {
-                            //无参函数
-                            return new ASTNode(nameNode, NodeType.call, []);
-                        } else {
-                            //开始读取参数
-                            let parList: ASTNode[] = [];
-                            let s = 1;
-                            let stopList: number[] = []
-                            paramNodeList.forEach((a, index) => {
-                                if ((a as any).type == NodeType[","] || (a as any).type == NodeType[")"]) {
-                                    stopList.push(index);
-                                }
-                            })
-                            for (let v of stopList) {
-                                var p = readGroup(paramNodeList.slice(s, v));
-                                if (p.operator > NodeType.P10 && p.operator < NodeType.P11) {
-                                    parList.push(p.left as any)
-                                } else {
-                                    parList.push(p)
-                                }
-                                s = v + 1;
-                            }
-                            return new ASTNode(nameNode, NodeType.call, parList);
-                        }
-                    }
-
-                    let maxCount = 10000
-                    let count = 0;
-                    while (currentPos <= endPos) {
-                        if (count++ >= maxCount) {
-                            throw "语法树分析死循环=>" + expression;
-                        }
-                        let op = group[currentPos];
-                        if (op instanceof Array) {
-                            joinNode(readGroup(op));
-                            currentPos++;
-                        } else if (op.type == NodeType.word && group[currentPos + 1] instanceof Array && (group[currentPos + 1] as any)[0] instanceof WordNode && (group[currentPos + 1] as any)[0].type == NodeType["("]) {
-                            //函数调用
-                            joinNode(readFunc(op, group[currentPos + 1] as any))
-                            currentPos += 2;
-                        } else {
-                            if (op.type < NodeType.P9) {
-                                //运算符
-                                let right = group[currentPos + 1];
-                                let rightOp = group[currentPos + 2];
-
-                                if (right instanceof WordNode && right.type == NodeType.word && rightOp instanceof Array && rightOp[0] instanceof WordNode && rightOp[0].type == NodeType["("]) {
-                                    //运算符右侧为函数调用，调用后，还需要考虑后面的运算符顺序
-                                    let funcNode = readFunc(right, rightOp);
-
-                                    let rightOp2 = group[currentPos + 3];
-                                    if (rightOp2 && rightOp2 instanceof WordNode && rightOp2.type < NodeType.P9 && getPN(rightOp2) < getPN(op)//+a().b 的情况
-                                        ||
-                                        (rightOp2 && rightOp2 instanceof Array && rightOp2[0] instanceof WordNode && rightOp2[0].type == NodeType["["] && getPN(rightOp2[0]) < getPN(op)) // +a()["c"] 的情况
-                                    ) {
-                                        //先执行函数，再执行后面的逻辑，最后回到当前运算符
-                                        var r = startRead(currentPos + 3, endPos);
-                                        r.node.left = funcNode;
-                                        joinNode(new ASTNode(null, op.type, r.node));
-                                        currentPos = r.pos;
-                                    } else {
-                                        if (op.type == NodeType["."]) {
-                                            //优先插入名字，最后组成函数访问链接
-                                            joinNode(new ASTNode(null, op.type, right)); //插入名字
-                                            joinNode(funcNode); //插入函数执行块
-                                        }
-                                        else {
-                                            //先执行函数
-                                            joinNode(new ASTNode(null, op.type, funcNode));
-                                        }
-                                        currentPos += 3;
-                                    }
-
-                                } else if (
-                                    (right && right instanceof WordNode && right.type < NodeType.P9) // + !a 的情况
-                                    ||
-                                    (rightOp && rightOp instanceof WordNode && rightOp.type < NodeType.P9 && getPN(rightOp) < getPN(op)) // + b * c 的情况
-                                    ||
-                                    (rightOp && rightOp instanceof Array && rightOp[0] instanceof WordNode && rightOp[0].type == NodeType["["] && getPN(rightOp[0]) < getPN(op)) // + a["c"] 的情况
-                                ) {
-                                    //右侧运算符优先
-                                    var r = startRead(currentPos + 1, endPos);
-                                    joinNode(new ASTNode(null, op.type, r.node));
-                                    currentPos = r.pos;
-                                } else {
-                                    //从左到右的顺序
-                                    joinNode(new ASTNode(null, op.type, right instanceof Array ? readGroup(right) : right))
-                                    currentPos = currentPos + 2;
-                                }
-                            } else if (op.type > NodeType.P10 && op.type < NodeType.P11) {
-                                joinNode(new ASTNode(op, op.type, null))
-                                currentPos++;
-                            } else if (op.type == NodeType.annotation) {
-                                if (currentNode != null) {
-                                    currentNode.behindAnnotation = op.value;
-                                } else {
-                                    frontAnnotation = op.value;
-                                }
-                                currentPos++;
-                            } else {
-                                throw expression + " 解析异常" + NodeType[op.type]
-                            }
-                        }
-                    }
-                    return { node: currentNode!, pos: currentPos };
-                }
-
-                let first = group[0];
-                if (first instanceof WordNode && first.type == NodeType["("]) {
-                    //只是个group，可以忽略前后的()
-                    return startRead(1, group.length - 2).node
-                } else if (first instanceof WordNode && first.type == NodeType["["]) {
-                    //.的另一种访问形式
-                    return new ASTNode(null, NodeType["."], startRead(1, group.length - 2).node);
-                } else if (first instanceof WordNode && first.type == NodeType["{"]) {
-                    //子表达式
-                    return new ASTNode(null, NodeType.lambda, startRead(1, group.length - 2).node);
-                } else {
-                    return startRead(0, group.length - 1).node;
-                }
-            }
-
-            return readGroup(groupList);
+            convertBracket(0, bracketList)//分组括号
+            return genAST(bracketList);
         }
 
-        static toStringAST(ast: ASTNode | WordNode | ASTNode[], isRoot = true): string {
+
+        static toStringAST(ast: ASTNode): string {
             var r = ""
-            if (!isRoot && ast instanceof ASTNode) {
-                r += "("
-            }
-            if (ast instanceof ASTNode) {
-                if (ast.operator == NodeType.call) {
-                    r += `${this.toStringAST(ast.left!)}(${this.toStringAST(ast.right!, false)})`
-                } else if (ast.left == null) {
-                    if (ast.operator == NodeType.lambda) {
-                        r += `{${this.toStringAST(ast.right!, true)}}`
-                    } else {
-                        r += `${NodeType[ast.operator]} ${this.toStringAST(ast.right!, false)}`
-                    }
-                } else if (ast.right == null) {
-                    r += `${this.toStringAST(ast.left, false)}`
-                } else {
-                    r += `${this.toStringAST(ast.left, false)} ${NodeType[ast.operator]} ${this.toStringAST(ast.right, false)}`
+            if (ast instanceof ValueASTNode) {
+                r += `${ast.value}`
+            } else if (ast instanceof BracketASTNode) {
+                if (ast.operator == NodeType["("]) {
+                    r += `(${this.toStringAST(ast.node)})`
+                } else if (ast.operator == NodeType["["]) {
+                    r += `[${this.toStringAST(ast.node)}]`
+                } else if (ast.operator == NodeType["{"]) {
+                    r += `{${this.toStringAST(ast.node)}}`
                 }
-            } else if (ast instanceof WordNode) {
-                r += ast.type == NodeType.string ? `"${ast.value}"` : `${ast.value}`
-            } else if (ast instanceof Array) {
-                r += ast.map(a => this.toStringAST(a, true)).join(", ")
-            }
-            if (!isRoot && ast instanceof ASTNode) {
-                r += ")"
+            } else if (ast instanceof UnitaryASTNode) {
+                r += `${NodeType[ast.operator]}${this.toStringAST(ast.right)}`
+            } else if (ast instanceof BinaryASTNode) {
+                r += `${this.toStringAST(ast.left)} ${NodeType[ast.operator]} ${this.toStringAST(ast.right)}`
+            } else if (ast instanceof CallASTNode) {
+                r += `${this.toStringAST(ast.left)}( ${ast.parameters.map(a => this.toStringAST(a)).join(", ")})`
             }
             return r
         }
@@ -552,122 +632,126 @@ namespace vm {
             return Interpreter.toStringAST(this.ast);
         }
 
-        static run(environment: { [key: string]: any }, ast: WordNode | ASTNode | null): any {
-            var runLogic = (ast: WordNode | ASTNode | null): any => {
-                if (!ast) {
+        /**
+         * 该函数所执行的表达式将自动进行容错处理
+         * 1. 当访问属性产生null值时，其将不参与计算 例如：a.b+13 当a或b为空时，结果将返回13
+         * 2. 当访问的表达式完全为null时，表达式将最终返回结果0，例如：a.b+c 则返回0
+         * @param environment 
+         * @param ast 
+         */
+        static run(environment: { [key: string]: any }, ast: ASTNode): any {
+
+            if (ast instanceof ValueASTNode) {
+                return ast.value.value;
+            } else if (ast instanceof BracketASTNode) {
+                return this.run(environment, ast.node)//括号内必然是个整体
+            } else if (ast instanceof UnitaryASTNode) {
+                let b = this.run(environment, ast.right)
+                switch (ast.operator) {
+                    case NodeType["!"]:
+                        return !b;
+                    default:
+                        throw `意外的一元运算符${NodeType[ast.operator]}}]`
+                }
+            } else if (ast instanceof BinaryASTNode) {
+
+                if (ast.operator == NodeType["."] || ast.operator == NodeType["["]) {
+                    let a: any = this.run(environment, ast.left)
+                    if (ast.left instanceof ValueASTNode) {
+                        a = environment[a];
+                    }
+                    if (a == null) {
+                        return null;//访问运算遇到null则不执行
+                    }
+                    return a[this.run(environment, ast.right)];
+                }
+                let a = this.run(environment, ast.left)
+                let b = this.run(environment, ast.right)
+
+                if (a == null && b == null) {
+                    return null;
+                } else if (a == null && b != null) {
+                    return b;
+                } else if (a != null && b == null) {
+                    return a;
+                }
+                switch (ast.operator) {
+                    case NodeType["**"]:
+                        return a ** b
+                    case NodeType["*"]:
+                        return a * b;
+                    case NodeType["/"]:
+                        return a / b
+                    case NodeType["%"]:
+                        return a % b
+                    case NodeType["+"]:
+                        return a + b
+                    case NodeType["-"]:
+                        return a - b
+                    case NodeType[">"]:
+                        return a > b
+                    case NodeType["<"]:
+                        return a < b
+                    case NodeType[">="]:
+                        return a >= b
+                    case NodeType["<="]:
+                        return a <= b
+                    case NodeType["!="]:
+                        return a != b
+                    case NodeType["=="]:
+                        return a == b
+                    case NodeType["&&"]:
+                        return a && b
+                    case NodeType["||"]:
+                        return a || b
+                    default:
+                        throw `意外的二元运算符${NodeType[ast.operator]}}]`
+                }
+            } else if (ast instanceof CallASTNode) {
+                let obj = this.run(environment, ast.left);
+
+                let self: any | undefined;
+                let func: Function | undefined;
+
+                if (ast.left instanceof ValueASTNode) {
+                    //全局函数
+                    func = environment[ast.left.value.value];
+                } else if ((ast.left as any)["left"]) {
+                    self = this.run(environment, (ast.left as any)["left"]);
+                    if (self == null) {
+                        return null;//self无法获取
+                    }
+                    func = self[this.run(environment, (ast.left as any).right)];
+                }
+                if (func == null) {
+                    return null;//func无法获取
+                }
+
+                if (obj == null) {
+                    //函数无法执行
                     return null;
                 }
-                if (ast instanceof ASTNode) {
-                    switch (ast.operator) {
-                        case NodeType["."]:
-                            let left: any;
-                            if (ast.left instanceof WordNode) {
-                                if (ast.left.type == NodeType.word) {
-                                    left = environment[ast.left.value]
-                                } else {
-                                    left = ast.left.value;
-                                }
+                let paramList = ast.parameters.map(p => {
+                    if (p instanceof BracketASTNode && p.operator == NodeType.lambda) {
+                        return (a: any) => {
+                            var newEv: { [key: string]: any };
+                            if (isPrimitive(a)) {
+                                newEv = { value: a }
                             } else {
-                                left = runLogic(ast.left)
+                                newEv = a;
                             }
-                            let rightWord: string
-                            if (ast.right instanceof WordNode) {
-                                rightWord = ast.right.value;
-                            } else {
-                                rightWord = runLogic(ast.right as any)
-                            }
-                            return left[rightWord];
-                        case NodeType["!"]:
-                            return !runLogic(ast.right as any)
-                        case NodeType["**"]:
-                            return runLogic(ast.left) ** runLogic(ast.right as any)
-                        case NodeType["*"]:
-                            return runLogic(ast.left) * runLogic(ast.right as any);
-                        case NodeType["/"]:
-                            return runLogic(ast.left) / runLogic(ast.right as any)
-                        case NodeType["%"]:
-                            return runLogic(ast.left) % runLogic(ast.right as any)
-                        case NodeType["+"]:
-                            return runLogic(ast.left) + runLogic(ast.right as any)
-                        case NodeType["-"]:
-                            return runLogic(ast.left) - runLogic(ast.right as any)
-                        case NodeType[">"]:
-                            return runLogic(ast.left) > runLogic(ast.right as any)
-                        case NodeType["<"]:
-                            return runLogic(ast.left) < runLogic(ast.right as any)
-                        case NodeType[">="]:
-                            return runLogic(ast.left) >= runLogic(ast.right as any)
-                        case NodeType["<="]:
-                            return runLogic(ast.left) <= runLogic(ast.right as any)
-                        case NodeType["!="]:
-                            return runLogic(ast.left) != runLogic(ast.right as any)
-                        case NodeType["=="]:
-                            return runLogic(ast.left) == runLogic(ast.right as any)
-                        case NodeType["&&"]:
-                            return runLogic(ast.left) && runLogic(ast.right as any)
-                        case NodeType["||"]:
-                            return runLogic(ast.left) || runLogic(ast.right as any)
-                        case NodeType["word"]:
-                        case NodeType["number"]:
-                        case NodeType["string"]:
-                        case NodeType["boolean"]:
-                            return runLogic(ast.left)
-                        case NodeType["call"]:
-                            let self: any;
-                            let target: any;
-                            if (ast.left instanceof ASTNode) {
-                                self = runLogic(ast.left.left);
+                            newEv.__proto__ = environment;
+                            newEv._ = environment;
 
-                                let rightWord: any;
-                                if (ast.left.right instanceof WordNode) {
-                                    rightWord = ast.left.right.value;
-                                }
-                                else {
-                                    rightWord = runLogic(ast.left.right as any);
-                                }
-
-                                target = self[rightWord];
-                            } else {
-                                target = runLogic(ast.left);
-                            }
-                            let func: Function
-                            if (typeof target == "function") {
-                                func = target;
-                            } else {
-                                func = environment[target];
-                            }
-                            let paramList = [];
-                            for (let p of ast.right as ASTNode[]) {
-                                if (p.operator == NodeType.lambda) {
-                                    //生成新的环境
-                                    let func = (a: any) => {
-                                        var newEv: { [key: string]: any };
-                                        if (isPrimitive(a)) {
-                                            newEv = { value: a }
-                                        } else {
-                                            newEv = a;
-                                        }
-                                        newEv.__proto__ = environment;
-                                        newEv._ = environment;
-
-                                        return Interpreter.run(newEv, p.right as any)
-                                    }
-                                    paramList.push(func);
-                                } else {
-                                    paramList.push(runLogic(p));
-                                }
-                            }
-                            return func.apply(self || environment, paramList);
+                            return Interpreter.run(newEv, p.node)
+                        }
+                    } else {
+                        return this.run(environment, p)
                     }
-                } else if (ast instanceof WordNode) {
-                    if (ast.type == NodeType.word) {
-                        return environment[ast.value];
-                    }
-                    return ast.value;
-                }
-                throw "AST异常" + JSON.stringify(ast);
+                });
+                return func.apply(self || environment, paramList);
             }
-            return runLogic(ast);
+
         }
 
         run(environment: { [key: string]: any }) {
