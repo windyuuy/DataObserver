@@ -370,270 +370,215 @@ test("语法分析", () => {
 
 })
 
-// test("!cur.greatProperty || cur.greatProperty.length <= 0", () => {
-//     var nodeList = vm.Interpreter.toWords("!cur.greatProperty || cur.greatProperty.length <= 0")
-//     var tree = vm.Interpreter.toAST(nodeList, "!cur.greatProperty || cur.greatProperty.length <= 0")
+test("!cur.greatProperty || cur.greatProperty.length <= 0", () => {
 
-//     expect(tree.operator).toBe(vm.NodeType["||"])
+    var errorList: string[] = [];
 
+    var nodeList = vm.Interpreter.toWords("!cur.greatProperty || cur.greatProperty.length <= 0")
+    var tree = vm.Interpreter.toAST(nodeList, "!cur.greatProperty || cur.greatProperty.length <= 0", errorList)
+    expect(errorList[0]).toBe(undefined);
+    expect(vm.Interpreter.toStringAST(tree, true)).toBe('((!(cur.greatProperty)) || (((cur.greatProperty).length) <= 0))')
+})
 
-// })
+test("语法分析 复杂", () => {
+    var errorList: string[] = [];
 
-// test("语法分析 复杂", () => {
-
-//     var nodeList = vm.Interpreter.toWords('cc.lib.format("玩家等级 %d Lv",100)')
-//     var tree = vm.Interpreter.toAST(nodeList, 'cc.lib.format("玩家等级 %d Lv",100)')
-//     expect(tree.operator).toBe(vm.NodeType.call)
-//     expect((tree.left as any).operator).toBe(vm.NodeType["."])
-//     expect((tree.left as any).left.left.value).toBe("cc")
-//     expect((tree.left as any).left.right.value).toBe("lib")
-//     expect((tree.left as any).right.value).toBe("format")
-//     expect((tree.right as any)).toBeInstanceOf(Array)
-//     expect((tree.right as any)[0].value).toBe("玩家等级 %d Lv")
-//     expect((tree.right as any)[1].value).toBe(100)
+    var nodeList = vm.Interpreter.toWords('cc.lib.format("玩家等级 %d Lv",100)')
+    var tree = vm.Interpreter.toAST(nodeList, 'cc.lib.format("玩家等级 %d Lv",100)', errorList)
+    expect(errorList[0]).toBe(undefined);
+    expect(vm.Interpreter.toStringAST(tree, true)).toBe('(((cc.lib).format)( \"玩家等级 %d Lv\", 100))')
 
 
-//     var nodeList = vm.Interpreter.toWords('a/(b)+c')
-//     var tree = vm.Interpreter.toAST(nodeList, 'a/(b)+c')
-//     expect(tree.operator).toBe(vm.NodeType["+"])
-//     expect((tree.left as any).operator).toBe(vm.NodeType["/"])
-//     expect((tree.left as any).left.value).toBe("a")
-//     expect((tree.left as any).right.value).toBe("b")
-//     expect((tree.right as any).value).toBe("c")
+    var nodeList = vm.Interpreter.toWords('a/(b)+c')
+    var tree = vm.Interpreter.toAST(nodeList, 'a/(b)+c', errorList)
+    expect(errorList[0]).toBe(undefined);
+    expect(vm.Interpreter.toStringAST(tree, true)).toBe('((a / (b)) + c)')
+
+    var nodeList = vm.Interpreter.toWords('Min(1,暴击/(暴击+韧性)*(LvA*2/(LvA+LvB)))')
+    var tree = vm.Interpreter.toAST(nodeList, 'Min(1,暴击/(暴击+韧性)*(LvA*2/(LvA+LvB)))', errorList)
+    expect(errorList[0]).toBe(undefined);
+    expect(vm.Interpreter.toStringAST(tree, true)).toBe('(Min( 1, ((暴击 / ((暴击 + 韧性))) * (((LvA * 2) / ((LvA + LvB)))))))')
 
 
-//     var nodeList = vm.Interpreter.toWords('Min(1,暴击/(暴击+韧性)*(LvA*2/(LvA+LvB)))')
-//     var tree = vm.Interpreter.toAST(nodeList, 'Min(1,暴击/(暴击+韧性)*(LvA*2/(LvA+LvB)))')
-//     expect(tree.operator).toBe(vm.NodeType.call)
-//     expect((tree.left as any).value).toBe("Min")
-//     expect((tree.right as any).length).toBe(2)
-//     expect((tree.right as any)[0].value).toBe(1)
-//     expect((tree.right as any)[1].operator).toBe(vm.NodeType["*"])
-//     expect((tree.right as any)[1].left.operator).toBe(vm.NodeType["/"])
-//     expect((tree.right as any)[1].left.left.value).toBe("暴击")
-//     expect((tree.right as any)[1].left.right.operator).toBe(vm.NodeType["+"])
-//     expect((tree.right as any)[1].left.right.left.value).toBe("暴击")
-//     expect((tree.right as any)[1].left.right.right.value).toBe("韧性")
-//     expect((tree.right as any)[1].right.operator).toBe(vm.NodeType["/"])
-//     expect((tree.right as any)[1].right.left.operator).toBe(vm.NodeType["*"])
-//     expect((tree.right as any)[1].right.left.left.value).toBe("LvA")
-//     expect((tree.right as any)[1].right.left.right.value).toBe(2)
-//     expect((tree.right as any)[1].right.right.operator).toBe(vm.NodeType["+"])
-//     expect((tree.right as any)[1].right.right.left.value).toBe("LvA")
-//     expect((tree.right as any)[1].right.right.right.value).toBe("LvB")
+
+    var nodeList = vm.Interpreter.toWords('SUM(装备列表,{等级*加成})')
+    var tree = vm.Interpreter.toAST(nodeList, 'SUM(装备列表,{等级*加成})', errorList)
+    expect(errorList[0]).toBe(undefined);
+    expect(vm.Interpreter.toStringAST(tree, true)).toBe('(SUM( 装备列表, {(等级 * 加成)}))')
 
 
-//     var nodeList = vm.Interpreter.toWords('SUM(装备列表,{等级*加成})')
-//     var tree = vm.Interpreter.toAST(nodeList, 'SUM(装备列表,{等级*加成})')
-
-//     expect(tree.operator).toBe(vm.NodeType.call);
-//     expect((tree.left as any).type).toBe(vm.NodeType.word);
-//     expect((tree.left as any).value).toBe("SUM");
-//     expect((tree.right as any)[0].type).toBe(vm.NodeType.word);
-//     expect((tree.right as any)[0].value).toBe("装备列表");
-//     expect((tree.right as any)[1].operator).toBe(vm.NodeType.lambda);
-//     expect((tree.right as any)[1].right.operator).toBe(vm.NodeType["*"]);
-//     expect((tree.right as any)[1].right.left.type).toBe(vm.NodeType.word);
-//     expect((tree.right as any)[1].right.left.value).toBe("等级");
-//     expect((tree.right as any)[1].right.right.type).toBe(vm.NodeType.word);
-//     expect((tree.right as any)[1].right.right.value).toBe("加成");
-
-//     var nodeList = vm.Interpreter.toWords('SUM(装备列表,{等级*加成+100-10},{等级*加成})')
-//     var tree = vm.Interpreter.toAST(nodeList, 'SUM(装备列表,{等级*加成+100-10},{等级*加成})')
-
-//     expect(tree.operator).toBe(vm.NodeType.call);
-//     expect((tree.left as any).type).toBe(vm.NodeType.word);
-//     expect((tree.left as any).value).toBe("SUM");
-//     expect((tree.right as any)[0].type).toBe(vm.NodeType.word);
-//     expect((tree.right as any)[0].value).toBe("装备列表");
-//     expect((tree.right as any)[1].operator).toBe(vm.NodeType.lambda);
-//     expect((tree.right as any)[1].right.operator).toBe(vm.NodeType["-"]);
-//     expect((tree.right as any)[1].right.left.operator).toBe(vm.NodeType["+"]);
-//     expect((tree.right as any)[1].right.left.left.operator).toBe(vm.NodeType["*"]);
-//     expect((tree.right as any)[1].right.left.left.left.value).toBe("等级");
-//     expect((tree.right as any)[1].right.left.left.right.type).toBe(vm.NodeType.word);
-//     expect((tree.right as any)[1].right.left.left.right.value).toBe("加成");
-//     expect((tree.right as any)[1].right.left.right.type).toBe(vm.NodeType.number);
-//     expect((tree.right as any)[1].right.left.right.value).toBe(100);
-//     expect((tree.right as any)[1].right.right.type).toBe(vm.NodeType.number);
-//     expect((tree.right as any)[1].right.right.value).toBe(10);
-//     expect((tree.right as any)[2].operator).toBe(vm.NodeType.lambda);
-//     expect((tree.right as any)[2].right.operator).toBe(vm.NodeType["*"]);
-//     expect((tree.right as any)[2].right.left.type).toBe(vm.NodeType.word);
-//     expect((tree.right as any)[2].right.left.value).toBe("等级");
-//     expect((tree.right as any)[2].right.right.type).toBe(vm.NodeType.word);
-//     expect((tree.right as any)[2].right.right.value).toBe("加成");
-
-//     var str = vm.Interpreter.toStringAST(tree);
-//     expect(str).toBe("SUM(装备列表, {((等级 * 加成) + 100) - 10}, {等级 * 加成})")
-
-//     var nodeList = vm.Interpreter.toWords('SUM({攻击力*(1+攻击力加成*p)})//哈哈行a')
-//     var tree = vm.Interpreter.toAST(nodeList, '/*略略略*/SUM(/*七七七*/{攻击力*(1+攻击力加成*p)})//嘻嘻嘻出现')
-
-//     var nodeList = vm.Interpreter.toWords('level<= MAX(RoleConfig,{level})*10')
-//     var tree = vm.Interpreter.toAST(nodeList, 'level<= MAX(RoleConfig,{level})*10')
-//     expect(tree.operator).toBe(vm.NodeType["<="]);
-//     expect((tree.right as any).operator).toBe(vm.NodeType["*"]);
+    var nodeList = vm.Interpreter.toWords('SUM(装备列表,{等级*加成+100-10},{等级*加成})')
+    var tree = vm.Interpreter.toAST(nodeList, 'SUM(装备列表,{等级*加成+100-10},{等级*加成})', errorList)
+    expect(errorList[0]).toBe(undefined);
+    expect(vm.Interpreter.toStringAST(tree, true)).toBe('(SUM( 装备列表, {(((等级 * 加成) + 100) - 10)}, {(等级 * 加成)}))')
 
 
-//     var nodeList = vm.Interpreter.toWords('level<= MAX(RoleConfig,{level}).level')
-//     var tree = vm.Interpreter.toAST(nodeList, 'level<= MAX(RoleConfig,{level}).level')
-//     expect(tree.operator).toBe(vm.NodeType["<="]);
-//     expect((tree.right as any).operator).toBe(vm.NodeType["."]);
 
-//     var nodeList = vm.Interpreter.toWords('level.MAX(RoleConfig,{level}).level')
-//     var tree = vm.Interpreter.toAST(nodeList, 'level.MAX(RoleConfig,{level}).level')
-//     expect(tree.operator).toBe(vm.NodeType["."]);
-//     expect((tree.left as any).operator).toBe(vm.NodeType.call);
-//     expect((tree.left as any).left.operator).toBe(vm.NodeType["."]);
+    var nodeList = vm.Interpreter.toWords('SUM({攻击力*(1+攻击力加成*p)})//哈哈行a')
+    var tree = vm.Interpreter.toAST(nodeList, '/*略略略*/SUM(/*七七七*/{攻击力*(1+攻击力加成*p)})//嘻嘻嘻出现', errorList)
+    expect(errorList[0]).toBe(undefined);
+    expect(vm.Interpreter.toStringAST(tree, true)).toBe('(SUM( {(攻击力 * ((1 + (攻击力加成 * p))))}))')
 
-
-//     var nodeList = vm.Interpreter.toWords('level == null')
-//     var tree = vm.Interpreter.toAST(nodeList, 'level == null')
-//     expect(tree.operator).toBe(vm.NodeType["=="]);
-//     expect((tree.right as any).type).toBe(vm.NodeType.null);
-
-//     expect(vm.Interpreter.toStringAST(tree)).toBe("level == null")
-
-// })
-
-// test("环境测试", () => {
-//     expect(vm.environment["MIN"](1, 2)).toBe(1)
-//     expect(vm.environment.PI).toBe(Math.PI);
-
-//     var a: any = {}
-//     vm.extendsEnvironment(a);
-//     expect(a["MIN"](1, 2)).toBe(1)
-//     expect(a.PI).toBe(Math.PI);
-//     expect(Object.keys(a).length).toBe(0);
-
-//     var b: any = { a: 1 }
-//     vm.implementEnvironment(b);
-//     expect(b["MIN"](1, 2)).toBe(1)
-//     expect(b.PI).toBe(Math.PI);
-//     expect(Object.keys(b).length).toBe(1);
-
-// })
-
-// test("表达式运行测试", () => {
-
-// expect(new vm.Interpreter("!false").run(vm.environment)).toBe(true);
-// expect(new vm.Interpreter("3**2").run(vm.environment)).toBe(9);
-// expect(new vm.Interpreter("3*2").run(vm.environment)).toBe(6);
-// expect(new vm.Interpreter("3/2").run(vm.environment)).toBe(1.5);
-// expect(new vm.Interpreter("3%2").run(vm.environment)).toBe(1);
-// expect(new vm.Interpreter("11+12").run(vm.environment)).toBe(23);
-// expect(new vm.Interpreter("11-12").run(vm.environment)).toBe(-1);
-// expect(new vm.Interpreter("11>12").run(vm.environment)).toBe(false);
-// expect(new vm.Interpreter("11<12").run(vm.environment)).toBe(true);
-// expect(new vm.Interpreter("11>=11").run(vm.environment)).toBe(true);
-// expect(new vm.Interpreter("11<=11").run(vm.environment)).toBe(true);
-// expect(new vm.Interpreter("12!=11").run(vm.environment)).toBe(true);
-// expect(new vm.Interpreter("12==11").run(vm.environment)).toBe(false);
-// expect(new vm.Interpreter("12>11 && 11<15").run(vm.environment)).toBe(true);
-// expect(new vm.Interpreter("12>11 || 11>15").run(vm.environment)).toBe(true);
-
-// var exp = new vm.Interpreter("MIN(100*2,200+100,300/2)")
-// expect(exp.run(vm.environment)).toBe(150);
-
-// var evn = {
-//     a: 100,
-//     b: 200,
-//     c: 300
-// }
-// vm.extendsEnvironment(evn);
-// var exp = new vm.Interpreter("a+b+c")
-// expect(exp.run(evn)).toBe(600)
+    var nodeList = vm.Interpreter.toWords('level<= MAX(RoleConfig,{level})*10')
+    var tree = vm.Interpreter.toAST(nodeList, 'level<= MAX(RoleConfig,{level})*10', errorList)
+    expect(errorList[0]).toBe(undefined);
+    expect(vm.Interpreter.toStringAST(tree, true)).toBe('(level <= ((MAX( RoleConfig, {level})) * 10))')
 
 
-// var evn2 = {
-//     local: {
-//         a: 100,
-//         b: 200,
-//         c: 300
-//     }
-// }
-// vm.extendsEnvironment(evn2);
-// var exp = new vm.Interpreter("local.a+local.b+local.c")
-// expect(exp.run(evn2)).toBe(600)
+    var nodeList = vm.Interpreter.toWords('level<= MAX(RoleConfig,{level}).level')
+    var tree = vm.Interpreter.toAST(nodeList, 'level<= MAX(RoleConfig,{level}).level', errorList)
+    expect(errorList[0]).toBe(undefined);
+    expect(vm.Interpreter.toStringAST(tree, true)).toBe('(level <= ((MAX( RoleConfig, {level})).level))')
 
-// var evn3 = {
-//     haha: {
-//         local: {
-//             a: 100,
-//             b: 200,
-//             c: 300
-//         }
-//     }
-// }
-// vm.extendsEnvironment(evn3);
-// var exp = new vm.Interpreter("haha.local.a+haha.local.b+haha.local.c")
-// expect(exp.run(evn3)).toBe(600)
+    var nodeList = vm.Interpreter.toWords('level.MAX(RoleConfig,{level}).level')
+    var tree = vm.Interpreter.toAST(nodeList, 'level.MAX(RoleConfig,{level}).level', errorList)
+    expect(errorList[0]).toBe(undefined);
+    expect(vm.Interpreter.toStringAST(tree, true)).toBe('(((level.MAX)( RoleConfig, {level})).level)')
+
+    var nodeList = vm.Interpreter.toWords('level == null')
+    var tree = vm.Interpreter.toAST(nodeList, 'level == null', errorList)
+    expect(errorList[0]).toBe(undefined);
+    expect(vm.Interpreter.toStringAST(tree, true)).toBe('(level == null)')
+
+})
+
+test("环境测试", () => {
+    expect(vm.environment["MIN"](1, 2)).toBe(1)
+    expect(vm.environment.PI).toBe(Math.PI);
+
+    var a: any = {}
+    vm.extendsEnvironment(a);
+    expect(a["MIN"](1, 2)).toBe(1)
+    expect(a.PI).toBe(Math.PI);
+    expect(Object.keys(a).length).toBe(0);
+
+    var b: any = { a: 1 }
+    vm.implementEnvironment(b);
+    expect(b["MIN"](1, 2)).toBe(1)
+    expect(b.PI).toBe(Math.PI);
+    expect(Object.keys(b).length).toBe(1);
+
+})
+
+test("表达式运行测试", () => {
+
+    expect(new vm.Interpreter("!false").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("3**2").run(vm.environment)).toBe(9);
+    expect(new vm.Interpreter("3*2").run(vm.environment)).toBe(6);
+    expect(new vm.Interpreter("3/2").run(vm.environment)).toBe(1.5);
+    expect(new vm.Interpreter("3%2").run(vm.environment)).toBe(1);
+    expect(new vm.Interpreter("11+12").run(vm.environment)).toBe(23);
+    expect(new vm.Interpreter("11-12").run(vm.environment)).toBe(-1);
+    expect(new vm.Interpreter("11>12").run(vm.environment)).toBe(false);
+    expect(new vm.Interpreter("11<12").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("11>=11").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("11<=11").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("12!=11").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("12==11").run(vm.environment)).toBe(false);
+    expect(new vm.Interpreter("12>11 && 11<15").run(vm.environment)).toBe(true);
+    expect(new vm.Interpreter("12>11 || 11>15").run(vm.environment)).toBe(true);
+
+    var exp = new vm.Interpreter("MIN(100*2,200+100,300/2)")
+    expect(exp.run(vm.environment)).toBe(150);
+
+    var evn = {
+        a: 100,
+        b: 200,
+        c: 300
+    }
+    vm.extendsEnvironment(evn);
+    var exp = new vm.Interpreter("a+b+c")
+    expect(exp.run(evn)).toBe(600)
 
 
-// var evn4 = {
-//     Math: Math,
-//     haha: {
-//         local: {
-//             a: 100,
-//             b: 200,
-//             c: 300,
-//             Math: Math
-//         }
-//     }
-// }
-// vm.extendsEnvironment(evn4);
-// var exp = new vm.Interpreter("Math.max( haha.local.a,haha.local.b,haha.local.c)")
-// expect(exp.run(evn4)).toBe(300)
+    var evn2 = {
+        local: {
+            a: 100,
+            b: 200,
+            c: 300
+        }
+    }
+    vm.extendsEnvironment(evn2);
+    var exp = new vm.Interpreter("local.a+local.b+local.c")
+    expect(exp.run(evn2)).toBe(600)
 
-// class Obj {
-//     x: number = 100;
+    var evn3 = {
+        haha: {
+            local: {
+                a: 100,
+                b: 200,
+                c: 300
+            }
+        }
+    }
+    vm.extendsEnvironment(evn3);
+    var exp = new vm.Interpreter("haha.local.a+haha.local.b+haha.local.c")
+    expect(exp.run(evn3)).toBe(600)
 
-//     add(obj: Obj) {
-//         return this.x + obj.x
-//     }
-// }
 
-// var evn5 = {
-//     a: new Obj(),
-//     b: {
-//         c: new Obj()
-//     },
-//     p: 2,
+    var evn4 = {
+        Math: Math,
+        haha: {
+            local: {
+                a: 100,
+                b: 200,
+                c: 300,
+                Math: Math
+            }
+        }
+    }
+    vm.extendsEnvironment(evn4);
+    var exp = new vm.Interpreter("Math.max( haha.local.a,haha.local.b,haha.local.c)")
+    expect(exp.run(evn4)).toBe(300)
 
-//     list: [{
-//         "攻击力": 10,
-//         "攻击力加成": 0.5
-//     }, {
-//         "攻击力": 20,
-//         "攻击力加成": 0.5
-//     }],
+    class Obj {
+        x: number = 100;
 
-//     SUM: function (list: any[], func: (a: any) => number) {
-//         var s = 0;
-//         for (let i of list) {
-//             s += func(i)
-//         }
-//         return s;
-//     }
-// }
-// vm.extendsEnvironment(evn5);
-// var exp = new vm.Interpreter("b.c.add(a)")
-// expect(exp.run(evn5)).toBe(200)
-// var exp = new vm.Interpreter("a.add(b.c)")
-// expect(exp.run(evn5)).toBe(200)
-// var exp = new vm.Interpreter("'abcd'.length")
-// expect(exp.run(evn5)).toBe(4)
-// var exp = new vm.Interpreter("'ab,cd'.split(',')")
-// expect(exp.run(evn5).length).toBe(2)
+        add(obj: Obj) {
+            return this.x + obj.x
+        }
+    }
 
-// var exp = new vm.Interpreter("/*嘻嘻嘻出现*/SUM(list/*哈哈哈*/,{攻击力*(1+攻击力加成 )* _.p})//嘻嘻嘻出现")
-// expect(exp.run(evn5)).toBe(45 * 2)
+    var evn5 = {
+        a: new Obj(),
+        b: {
+            c: new Obj()
+        },
+        p: 2,
 
-// var exp = new vm.Interpreter("level == null")
-// expect(exp.run(evn5)).toBe(true)
+        list: [{
+            "攻击力": 10,
+            "攻击力加成": 0.5
+        }, {
+            "攻击力": 20,
+            "攻击力加成": 0.5
+        }],
 
-// var exp = new vm.Interpreter("level != null")
-// expect(exp.run(evn5)).toBe(false)
+        SUM: function (list: any[], func: (a: any) => number) {
+            var s = 0;
+            for (let i of list) {
+                s += func(i)
+            }
+            return s;
+        }
+    }
+    vm.extendsEnvironment(evn5);
+    var exp = new vm.Interpreter("b.c.add(a)")
+    expect(exp.run(evn5)).toBe(200)
+    var exp = new vm.Interpreter("a.add(b.c)")
+    expect(exp.run(evn5)).toBe(200)
+    var exp = new vm.Interpreter("'abcd'.length")
+    expect(exp.run(evn5)).toBe(4)
+    var exp = new vm.Interpreter("'ab,cd'.split(',')")
+    expect(exp.run(evn5).length).toBe(2)
 
-// })
+    var exp = new vm.Interpreter("/*嘻嘻嘻出现*/SUM(list/*哈哈哈*/,{攻击力*(1+攻击力加成 )* _.p})//嘻嘻嘻出现")
+    expect(exp.run(evn5)).toBe(45 * 2)
+
+    var exp = new vm.Interpreter("level == null")
+    expect(exp.run(evn5)).toBe(true)
+
+    var exp = new vm.Interpreter("level != null")
+    expect(exp.run(evn5)).toBe(false)
+
+})

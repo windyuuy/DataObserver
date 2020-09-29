@@ -444,10 +444,10 @@ var vm;
     vm.WordNode = WordNode;
     var ASTNodeBase = /** @class */ (function () {
         function ASTNodeBase(
-        /**
-         * 操作符
-         */
-        operator) {
+            /**
+             * 操作符
+             */
+            operator) {
             this.operator = operator;
             //父节点
             this.parent = null;
@@ -478,11 +478,11 @@ var vm;
     vm.BracketASTNode = BracketASTNode;
     var UnitaryASTNode = /** @class */ (function (_super) {
         __extends(UnitaryASTNode, _super);
-        function UnitaryASTNode(operator, 
-        /**
-         * 一元表达式的右值
-         */
-        right) {
+        function UnitaryASTNode(operator,
+            /**
+             * 一元表达式的右值
+             */
+            right) {
             var _this = _super.call(this, operator) || this;
             _this.operator = operator;
             _this.right = right;
@@ -495,18 +495,18 @@ var vm;
     var BinaryASTNode = /** @class */ (function (_super) {
         __extends(BinaryASTNode, _super);
         function BinaryASTNode(
-        /**
-         * 二元表达式的左值
-         */
-        left, 
-        /**
-         * 运算符
-         */
-        operator, 
-        /**
-         * 二元表达式的左值
-         */
-        right) {
+            /**
+             * 二元表达式的左值
+             */
+            left,
+            /**
+             * 运算符
+             */
+            operator,
+            /**
+             * 二元表达式的左值
+             */
+            right) {
             var _this = _super.call(this, operator) || this;
             _this.left = left;
             _this.operator = operator;
@@ -521,14 +521,14 @@ var vm;
     var CallASTNode = /** @class */ (function (_super) {
         __extends(CallASTNode, _super);
         function CallASTNode(
-        /**
-         * 函数访问节点
-         */
-        left, 
-        /**
-         * 函数参数列表
-         */
-        parameters) {
+            /**
+             * 函数访问节点
+             */
+            left,
+            /**
+             * 函数参数列表
+             */
+            parameters) {
             var _this = _super.call(this, NodeType.call) || this;
             _this.left = left;
             _this.parameters = parameters;
@@ -895,6 +895,7 @@ var vm;
                         else if (endPriority == NodeType.P1 && a instanceof WordNode && a.type == NodeType.word && b instanceof Array && b[0] instanceof WordNode && b[0].type == NodeType["("]) {
                             //特殊处理 . 和 [] 后续逻辑，可能会紧跟着函数调用
                             currentAST = new CallASTNode(genAST(a instanceof Array ? a : [a]), genParamList(b));
+                            rlist.pop() //删除上次循环所插入的b
                             continue; //a和b都需要插入到rlist
                         }
                         if (i == 1) { //由于是从1开始遍历的，因此需要保留0的值
@@ -952,6 +953,9 @@ var vm;
                 if (sourcelist.length == 1 && sourcelist[0] instanceof ASTNodeBase) {
                     return sourcelist[0];
                 }
+                if (sourcelist.length == 1 && sourcelist[0] instanceof Array) {
+                    return genAST(sourcelist[0]);
+                }
                 var list = sourcelist;
                 //进行括号处理
                 var bracketType;
@@ -986,15 +990,17 @@ var vm;
                     pushError(sourcelist[0], "解析后节点列表无法归一");
                     result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
                 }
-                else if (list.length == 0) {
+                else {
                     pushError(sourcelist[0], "无法正确解析列表");
                     result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
                 }
-                else {
-                    result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
-                }
                 if (bracketType !== undefined) {
-                    return new BracketASTNode(bracketType, result);
+                    if (bracketType == NodeType["{"]) {
+                        return new BracketASTNode(NodeType.lambda, result);
+                    }
+                    else {
+                        return new BracketASTNode(bracketType, result);
+                    }
                 }
                 else {
                     return result;
@@ -1024,7 +1030,7 @@ var vm;
                 else if (ast.operator == NodeType["["]) {
                     r += "[" + this.toStringAST(ast.node, addBracket) + "]";
                 }
-                else if (ast.operator == NodeType["{"]) {
+                else if (ast.operator == NodeType["{"] || ast.operator == NodeType.lambda) {
                     r += "{" + this.toStringAST(ast.node, addBracket) + "}";
                 }
             }
@@ -1275,11 +1281,11 @@ var vm;
     /**
      * 拦截对象所有的key和value
      */
-    function defineReactive(obj, key, 
-    /**
-     * 对象的默认值，也就是 obj[key]
-     */
-    val) {
+    function defineReactive(obj, key,
+        /**
+         * 对象的默认值，也就是 obj[key]
+         */
+        val) {
         //必包的中依赖，相当于是每一个属性的附加对象，用于记录属性的所有以来侦听。
         var dep = new vm.Dep();
         var property = Object.getOwnPropertyDescriptor(obj, key);

@@ -569,6 +569,10 @@ namespace vm {
                 if (sourcelist.length == 1 && sourcelist[0] instanceof ASTNodeBase) {
                     return sourcelist[0];
                 }
+                if (sourcelist.length == 1 && sourcelist[0] instanceof Array) {
+                    return genAST(sourcelist[0]);
+                }
+
                 let list = sourcelist;
 
                 //进行括号处理
@@ -603,15 +607,17 @@ namespace vm {
                 } else if (list.length > 1) {
                     pushError(sourcelist[0], "解析后节点列表无法归一")
                     result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
-                } else if (list.length == 0) {
-                    pushError(sourcelist[0], "无法正确解析列表")
-                    result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
                 } else {
+                    pushError(sourcelist[0], "无法正确解析列表")
                     result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
                 }
 
                 if (bracketType !== undefined) {
-                    return new BracketASTNode(bracketType, result);
+                    if (bracketType == NodeType["{"]) {
+                        return new BracketASTNode(NodeType.lambda, result);
+                    } else {
+                        return new BracketASTNode(bracketType, result);
+                    }
                 } else {
                     return result;
                 }
@@ -638,7 +644,7 @@ namespace vm {
                     r += `(${this.toStringAST(ast.node, addBracket)})`
                 } else if (ast.operator == NodeType["["]) {
                     r += `[${this.toStringAST(ast.node, addBracket)}]`
-                } else if (ast.operator == NodeType["{"]) {
+                } else if (ast.operator == NodeType["{"] || ast.operator == NodeType.lambda) {
                     r += `{${this.toStringAST(ast.node, addBracket)}}`
                 }
             } else if (ast instanceof UnitaryASTNode) {
