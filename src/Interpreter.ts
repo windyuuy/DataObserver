@@ -41,7 +41,7 @@ namespace vm {
 
     }
 
-    class WordNode {
+    export class WordNode {
         public lineEnd: number;
         //父节点
         public parent: ASTNode | null = null;
@@ -59,9 +59,9 @@ namespace vm {
         ) { this.lineEnd = lineStart }
     }
 
-    type ASTNode = ValueASTNode | BracketASTNode | UnitaryASTNode | BinaryASTNode | CallASTNode
+    export type ASTNode = ValueASTNode | BracketASTNode | UnitaryASTNode | BinaryASTNode | CallASTNode
 
-    class ASTNodeBase {
+    export class ASTNodeBase {
         //父节点
         public parent: UnitaryASTNode | BinaryASTNode | CallASTNode | null = null;
         /**
@@ -81,7 +81,7 @@ namespace vm {
 
     }
 
-    class ValueASTNode extends ASTNodeBase {
+    export class ValueASTNode extends ASTNodeBase {
         constructor(
             public value: WordNode
 
@@ -90,7 +90,7 @@ namespace vm {
         }
     }
 
-    class BracketASTNode extends ASTNodeBase {
+    export class BracketASTNode extends ASTNodeBase {
         constructor(
             public operator: NodeType,
             public node: ASTNode
@@ -100,7 +100,7 @@ namespace vm {
 
     }
 
-    class UnitaryASTNode extends ASTNodeBase {
+    export class UnitaryASTNode extends ASTNodeBase {
         constructor(
             public operator: NodeType,
             /**
@@ -113,7 +113,7 @@ namespace vm {
         }
     }
 
-    class BinaryASTNode extends ASTNodeBase {
+    export class BinaryASTNode extends ASTNodeBase {
         constructor(
             /**
              * 二元表达式的左值
@@ -134,7 +134,7 @@ namespace vm {
         }
     }
 
-    class CallASTNode extends ASTNodeBase {
+    export class CallASTNode extends ASTNodeBase {
         constructor(
             /**
              * 函数访问节点
@@ -214,7 +214,7 @@ namespace vm {
                         if (doubleOpMap[char] || char == "/") {//有// 和 /* 等两种注释的情况
                             //可能是多运算符
                             state = 2;
-                        } else if (char == "-" && (nodeList.length != 0 && nodeList[nodeList.length - 1].type < NodeType.P9 || nodeList.length == 0)) {
+                        } else if (char == "-" && (nodeList.length != 0 && nodeList[nodeList.length - 1].type < NodeType.P10 || nodeList.length == 0)) {
                             //负数数字
                             state = 1;
                         } else {
@@ -341,7 +341,7 @@ namespace vm {
         static toAST(nodeList: WordNode[], expression: string, errorList: string[]) {
             //根据运算符优先级进行分组
             type Node = WordNode[] | WordNode | ASTNode;
-            let bracketList: Node[] = nodeList;
+            let bracketList: Node[] = [];
 
             let bracketMap: { [key: string]: boolean } = {};
             [NodeType["("], NodeType["["], NodeType["{"]].forEach(k => bracketMap[k] = true);
@@ -423,7 +423,7 @@ namespace vm {
                         }
                         if (currentAST == null) {
                             //第一次发现
-                            currentAST = new UnitaryASTNode(b.type, genAST([a]));
+                            currentAST = new UnitaryASTNode(b.type, genAST(a instanceof Array ? a : [a]));
                         } else {
                             //多个单目运算符连续
                             currentAST = new UnitaryASTNode(b.type, currentAST);
@@ -433,8 +433,9 @@ namespace vm {
                             //一轮连续的单目运算符组合完毕
                             rlist.push(currentAST);
                             currentAST = undefined;
+                        } else {
+                            rlist.push(a);//上次必然已经被加入了ast中，因此不需要push
                         }
-                        rlist.push(a);
                     }
                 }
                 if (currentAST) {
@@ -461,13 +462,13 @@ namespace vm {
                         }
                         if (currentAST == null) {
                             //第一次发现
-                            currentAST = new BinaryASTNode(genAST([a]), b.type, genAST([c]));
+                            rlist.pop()//删除上次循环所插入的b
+                            currentAST = new BinaryASTNode(genAST(a instanceof Array ? a : [a]), b.type, genAST(c instanceof Array ? c : [c]));
                         } else {
                             //多次双目运算符连续
-                            currentAST = new BinaryASTNode(currentAST, b.type, genAST([c]));
+                            currentAST = new BinaryASTNode(currentAST, b.type, genAST(c instanceof Array ? c : [c]));
                         }
 
-                        i++;//跳过c的遍历
 
                         //特殊处理 . 和 [] 后续逻辑，可能会紧跟着函数调用
                         let d = list[i + 2];
@@ -476,13 +477,19 @@ namespace vm {
 
                             i++;//跳过d的遍历
                         }
+                        i++;//跳过c的遍历
 
                     }
 
                     //特殊处理，仅处理a['b']中括号的访问方式。
-                    else if (currentAST && b instanceof Array && b[0] instanceof WordNode && b[0].type == NodeType["["]) {
+                    else if (b instanceof Array && b[0] instanceof WordNode && b[0].type == NodeType["["]) {
                         //中括号方式访问属性
-                        currentAST = new BinaryASTNode(currentAST, NodeType["["], genAST(b));
+                        if (currentAST) {
+                            currentAST = new BinaryASTNode(currentAST, NodeType["["], genAST(b));
+                        } else {
+                            rlist.pop()//删除上次循环所插入的b
+                            currentAST = new BinaryASTNode(genAST(a instanceof Array ? a : [a]), NodeType["["], genAST(b));
+                        }
 
                         //特殊处理 . 和 [] 后续逻辑，可能会紧跟着函数调用
                         if (endPriority == NodeType.P1 && c instanceof Array && c[0] instanceof WordNode && c[0].type == NodeType["("]) {
@@ -493,9 +500,18 @@ namespace vm {
 
                     } else {
                         if (currentAST) {
-                            //一轮连续的双目运算符组合完毕
-                            rlist.push(currentAST);
-                            currentAST = undefined;
+                            if (endPriority == NodeType.P1 && b instanceof Array && b[0] instanceof WordNode && b[0].type == NodeType["("]) {
+                                currentAST = new CallASTNode(currentAST, genParamList(b));
+                                continue;
+                            } else {
+                                //一轮连续的双目运算符组合完毕
+                                rlist.push(currentAST);
+                                currentAST = undefined;
+                            }
+                        } else if (endPriority == NodeType.P1 && a instanceof WordNode && a.type == NodeType.word && b instanceof Array && b[0] instanceof WordNode && b[0].type == NodeType["("]) {
+                            //特殊处理 . 和 [] 后续逻辑，可能会紧跟着函数调用
+                            currentAST = new CallASTNode(genAST(a instanceof Array ? a : [a]), genParamList(b));
+                            continue;//a和b都需要插入到rlist
                         }
                         if (i == 1) {//由于是从1开始遍历的，因此需要保留0的值
                             rlist.push(a);
@@ -510,7 +526,7 @@ namespace vm {
                     rlist.push(currentAST);
                 }
 
-                return list;
+                return rlist;
             }
 
             let splice = (list: Node[], sp: NodeType): Node[][] => {
@@ -557,7 +573,7 @@ namespace vm {
 
                 //进行括号处理
                 let bracketType: NodeType | undefined;
-                let a = list[0]; let b = list[1];
+                let a = list[0]; let b = list[list.length - 1];
                 if (a instanceof WordNode && b instanceof WordNode &&
                     (a.type == NodeType["("] && b.type == NodeType[")"] ||
                         a.type == NodeType["["] && b.type == NodeType["]"] ||
@@ -606,24 +622,40 @@ namespace vm {
         }
 
 
-        static toStringAST(ast: ASTNode): string {
+        static toStringAST(ast: ASTNode, addBracket?: boolean): string {
             var r = ""
+            if (addBracket && !(ast instanceof ValueASTNode || ast instanceof BracketASTNode)) {
+                r += "("
+            }
             if (ast instanceof ValueASTNode) {
-                r += `${ast.value}`
+                if (ast.value.type == NodeType.string) {
+                    r += `"${ast.value.value}"`
+                } else {
+                    r += `${ast.value.value}`
+                }
             } else if (ast instanceof BracketASTNode) {
                 if (ast.operator == NodeType["("]) {
-                    r += `(${this.toStringAST(ast.node)})`
+                    r += `(${this.toStringAST(ast.node, addBracket)})`
                 } else if (ast.operator == NodeType["["]) {
-                    r += `[${this.toStringAST(ast.node)}]`
+                    r += `[${this.toStringAST(ast.node, addBracket)}]`
                 } else if (ast.operator == NodeType["{"]) {
-                    r += `{${this.toStringAST(ast.node)}}`
+                    r += `{${this.toStringAST(ast.node, addBracket)}}`
                 }
             } else if (ast instanceof UnitaryASTNode) {
-                r += `${NodeType[ast.operator]}${this.toStringAST(ast.right)}`
+                r += `${NodeType[ast.operator]}${this.toStringAST(ast.right, addBracket)}`
             } else if (ast instanceof BinaryASTNode) {
-                r += `${this.toStringAST(ast.left)} ${NodeType[ast.operator]} ${this.toStringAST(ast.right)}`
+                if (ast.operator == NodeType["["]) {
+                    r += `${this.toStringAST(ast.left, addBracket)}${this.toStringAST(ast.right, addBracket)}`
+                } else if (ast.operator == NodeType["."]) {
+                    r += `${this.toStringAST(ast.left, addBracket)}${NodeType[ast.operator]}${this.toStringAST(ast.right, addBracket)}`
+                } else {
+                    r += `${this.toStringAST(ast.left, addBracket)} ${NodeType[ast.operator]} ${this.toStringAST(ast.right, addBracket)}`
+                }
             } else if (ast instanceof CallASTNode) {
-                r += `${this.toStringAST(ast.left)}( ${ast.parameters.map(a => this.toStringAST(a)).join(", ")})`
+                r += `${this.toStringAST(ast.left, addBracket)}( ${ast.parameters.map(a => this.toStringAST(a, addBracket)).join(", ")})`
+            }
+            if (addBracket && !(ast instanceof ValueASTNode || ast instanceof BracketASTNode)) {
+                r += ")"
             }
             return r
         }

@@ -381,50 +381,52 @@ var vm;
     var NodeType;
     (function (NodeType) {
         //运算符
-        NodeType[NodeType["["] = 0] = "[";
-        NodeType[NodeType["("] = 1] = "(";
-        NodeType[NodeType["{"] = 2] = "{";
-        NodeType[NodeType["."] = 3] = ".";
-        NodeType[NodeType["P1"] = 4] = "P1";
-        NodeType[NodeType["!"] = 5] = "!";
-        NodeType[NodeType["P2"] = 6] = "P2";
-        NodeType[NodeType["**"] = 7] = "**";
-        NodeType[NodeType["P3"] = 8] = "P3";
-        NodeType[NodeType["*"] = 9] = "*";
-        NodeType[NodeType["/"] = 10] = "/";
-        NodeType[NodeType["%"] = 11] = "%";
-        NodeType[NodeType["P4"] = 12] = "P4";
-        NodeType[NodeType["+"] = 13] = "+";
-        NodeType[NodeType["-"] = 14] = "-";
-        NodeType[NodeType["P5"] = 15] = "P5";
-        NodeType[NodeType[">"] = 16] = ">";
-        NodeType[NodeType["<"] = 17] = "<";
-        NodeType[NodeType[">="] = 18] = ">=";
-        NodeType[NodeType["<="] = 19] = "<=";
-        NodeType[NodeType["P6"] = 20] = "P6";
-        NodeType[NodeType["!="] = 21] = "!=";
-        NodeType[NodeType["=="] = 22] = "==";
-        NodeType[NodeType["P7"] = 23] = "P7";
-        NodeType[NodeType["&&"] = 24] = "&&";
-        NodeType[NodeType["||"] = 25] = "||";
+        NodeType[NodeType["P0"] = 0] = "P0";
+        NodeType[NodeType["["] = 1] = "[";
+        NodeType[NodeType["("] = 2] = "(";
+        NodeType[NodeType["{"] = 3] = "{";
+        NodeType[NodeType["."] = 4] = ".";
+        NodeType[NodeType["P1"] = 5] = "P1";
+        NodeType[NodeType["!"] = 6] = "!";
+        NodeType[NodeType["P2"] = 7] = "P2";
+        NodeType[NodeType["**"] = 8] = "**";
+        NodeType[NodeType["P3"] = 9] = "P3";
+        NodeType[NodeType["*"] = 10] = "*";
+        NodeType[NodeType["/"] = 11] = "/";
+        NodeType[NodeType["%"] = 12] = "%";
+        NodeType[NodeType["P4"] = 13] = "P4";
+        NodeType[NodeType["+"] = 14] = "+";
+        NodeType[NodeType["-"] = 15] = "-";
+        NodeType[NodeType["P5"] = 16] = "P5";
+        NodeType[NodeType[">"] = 17] = ">";
+        NodeType[NodeType["<"] = 18] = "<";
+        NodeType[NodeType[">="] = 19] = ">=";
+        NodeType[NodeType["<="] = 20] = "<=";
+        NodeType[NodeType["P6"] = 21] = "P6";
+        NodeType[NodeType["!="] = 22] = "!=";
+        NodeType[NodeType["=="] = 23] = "==";
+        NodeType[NodeType["P7"] = 24] = "P7";
+        NodeType[NodeType["&&"] = 25] = "&&";
         NodeType[NodeType["P8"] = 26] = "P8";
-        NodeType[NodeType[","] = 27] = ",";
+        NodeType[NodeType["||"] = 27] = "||";
         NodeType[NodeType["P9"] = 28] = "P9";
-        NodeType[NodeType["]"] = 29] = "]";
-        NodeType[NodeType[")"] = 30] = ")";
-        NodeType[NodeType["}"] = 31] = "}";
-        NodeType[NodeType["P10"] = 32] = "P10";
+        NodeType[NodeType[","] = 29] = ",";
+        NodeType[NodeType["P10"] = 30] = "P10";
+        NodeType[NodeType["]"] = 31] = "]";
+        NodeType[NodeType[")"] = 32] = ")";
+        NodeType[NodeType["}"] = 33] = "}";
+        NodeType[NodeType["P11"] = 34] = "P11";
         //值
-        NodeType[NodeType["number"] = 33] = "number";
-        NodeType[NodeType["word"] = 34] = "word";
-        NodeType[NodeType["string"] = 35] = "string";
-        NodeType[NodeType["boolean"] = 36] = "boolean";
-        NodeType[NodeType["null"] = 37] = "null";
-        NodeType[NodeType["P11"] = 38] = "P11";
-        NodeType[NodeType["annotation"] = 39] = "annotation";
+        NodeType[NodeType["number"] = 35] = "number";
+        NodeType[NodeType["word"] = 36] = "word";
+        NodeType[NodeType["string"] = 37] = "string";
+        NodeType[NodeType["boolean"] = 38] = "boolean";
+        NodeType[NodeType["null"] = 39] = "null";
+        NodeType[NodeType["P12"] = 40] = "P12";
+        NodeType[NodeType["annotation"] = 41] = "annotation";
         //组合，只会在AST中出现
-        NodeType[NodeType["call"] = 40] = "call";
-        NodeType[NodeType["lambda"] = 41] = "lambda";
+        NodeType[NodeType["call"] = 42] = "call";
+        NodeType[NodeType["lambda"] = 43] = "lambda";
     })(NodeType = vm.NodeType || (vm.NodeType = {}));
     var WordNode = /** @class */ (function () {
         function WordNode(type, value, lineStart, columnStart, columnEnd) {
@@ -439,23 +441,104 @@ var vm;
         }
         return WordNode;
     }());
-    var ASTNode = /** @class */ (function () {
-        function ASTNode(left, //一元运算符允许为空
-        operator, right) {
-            this.left = left;
+    vm.WordNode = WordNode;
+    var ASTNodeBase = /** @class */ (function () {
+        function ASTNodeBase(
+        /**
+         * 操作符
+         */
+        operator) {
             this.operator = operator;
-            this.right = right;
             //父节点
             this.parent = null;
-            if (this.left) {
-                this.left.parent = this;
-            }
-            if (this.right) {
-                this.right.parent = this;
-            }
         }
-        return ASTNode;
+        return ASTNodeBase;
     }());
+    vm.ASTNodeBase = ASTNodeBase;
+    var ValueASTNode = /** @class */ (function (_super) {
+        __extends(ValueASTNode, _super);
+        function ValueASTNode(value) {
+            var _this = _super.call(this, value.type) || this;
+            _this.value = value;
+            return _this;
+        }
+        return ValueASTNode;
+    }(ASTNodeBase));
+    vm.ValueASTNode = ValueASTNode;
+    var BracketASTNode = /** @class */ (function (_super) {
+        __extends(BracketASTNode, _super);
+        function BracketASTNode(operator, node) {
+            var _this = _super.call(this, operator) || this;
+            _this.operator = operator;
+            _this.node = node;
+            return _this;
+        }
+        return BracketASTNode;
+    }(ASTNodeBase));
+    vm.BracketASTNode = BracketASTNode;
+    var UnitaryASTNode = /** @class */ (function (_super) {
+        __extends(UnitaryASTNode, _super);
+        function UnitaryASTNode(operator, 
+        /**
+         * 一元表达式的右值
+         */
+        right) {
+            var _this = _super.call(this, operator) || this;
+            _this.operator = operator;
+            _this.right = right;
+            _this.right.parent = _this;
+            return _this;
+        }
+        return UnitaryASTNode;
+    }(ASTNodeBase));
+    vm.UnitaryASTNode = UnitaryASTNode;
+    var BinaryASTNode = /** @class */ (function (_super) {
+        __extends(BinaryASTNode, _super);
+        function BinaryASTNode(
+        /**
+         * 二元表达式的左值
+         */
+        left, 
+        /**
+         * 运算符
+         */
+        operator, 
+        /**
+         * 二元表达式的左值
+         */
+        right) {
+            var _this = _super.call(this, operator) || this;
+            _this.left = left;
+            _this.operator = operator;
+            _this.right = right;
+            _this.left.parent = _this;
+            _this.right.parent = _this;
+            return _this;
+        }
+        return BinaryASTNode;
+    }(ASTNodeBase));
+    vm.BinaryASTNode = BinaryASTNode;
+    var CallASTNode = /** @class */ (function (_super) {
+        __extends(CallASTNode, _super);
+        function CallASTNode(
+        /**
+         * 函数访问节点
+         */
+        left, 
+        /**
+         * 函数参数列表
+         */
+        parameters) {
+            var _this = _super.call(this, NodeType.call) || this;
+            _this.left = left;
+            _this.parameters = parameters;
+            _this.left.parent = _this;
+            _this.parameters.forEach(function (a) { return a.parent = _this; });
+            return _this;
+        }
+        return CallASTNode;
+    }(ASTNodeBase));
+    vm.CallASTNode = CallASTNode;
     var zeroCode = "0".charCodeAt(0);
     var nineCode = "9".charCodeAt(0);
     var operatorCharMap = {};
@@ -473,7 +556,8 @@ var vm;
     var Interpreter = /** @class */ (function () {
         function Interpreter(expression) {
             this.expression = expression;
-            this.ast = Interpreter.toAST(Interpreter.toWords(this.expression), this.expression);
+            this.astErrorList = [];
+            this.ast = Interpreter.toAST(Interpreter.toWords(this.expression), this.expression, this.astErrorList);
         }
         Interpreter.toWords = function (expression) {
             var line = 0;
@@ -507,7 +591,7 @@ var vm;
                             //可能是多运算符
                             state = 2;
                         }
-                        else if (char == "-" && nodeList.length != 0 && nodeList[nodeList.length - 1].type < NodeType.P8) {
+                        else if (char == "-" && (nodeList.length != 0 && nodeList[nodeList.length - 1].type < NodeType.P10 || nodeList.length == 0)) {
                             //负数数字
                             state = 1;
                         }
@@ -645,14 +729,33 @@ var vm;
             run(" "); //传入空格，使其收集最后的结束点
             return nodeList;
         };
-        Interpreter.toAST = function (nodeList, expression) {
-            var groupList = [];
-            var sumMap = {};
-            [NodeType["("], NodeType["["], NodeType["{"]].forEach(function (k) { return sumMap[k] = true; });
-            var readBracket = function (start, list, endType) {
+        Interpreter.toAST = function (nodeList, expression, errorList) {
+            var bracketList = [];
+            var bracketMap = {};
+            [NodeType["("], NodeType["["], NodeType["{"]].forEach(function (k) { return bracketMap[k] = true; });
+            var getWordNode = function (node) {
+                while (node instanceof Array) {
+                    node = node[0];
+                }
+                if (node instanceof WordNode) {
+                    return node;
+                }
+            };
+            var pushError = function (node, msg) {
+                var errorPos = getWordNode(node);
+                var errorMsg = expression + msg;
+                if (errorPos) {
+                    errorMsg += "\uFF0C\u5728" + (errorPos.lineEnd + 1) + ":" + (errorPos.columnEnd + 1) + "\u3002";
+                }
+                errorList.push(expression + msg);
+            };
+            /**
+             * 将括号按层级分组成数组
+             */
+            var convertBracket = function (start, list, endType) {
                 for (var i = start; i < nodeList.length; i++) {
                     var current = nodeList[i];
-                    if (sumMap[current.type] !== undefined) {
+                    if (bracketMap[current.type] !== undefined) {
                         //发现括号
                         var nextEndType = void 0;
                         switch (current.type) {
@@ -669,7 +772,7 @@ var vm;
                                 throw expression + "括号分析异常异常'" + NodeType[current.type] + "' " + current.lineStart + ":" + current.columnStart;
                         }
                         var newList = [current];
-                        i = readBracket(i + 1, newList, nextEndType);
+                        i = convertBracket(i + 1, newList, nextEndType);
                         list.push(newList);
                     }
                     else if (endType != null && endType == current.type) {
@@ -681,262 +784,268 @@ var vm;
                     }
                 }
                 if (endType != null && list[list.length - 1].type != endType) {
-                    var errorPos = list[list.length - 1];
-                    while (!(errorPos instanceof WordNode)) {
-                        errorPos = errorPos[0];
-                    }
-                    throw expression + ("\u7F3A\u5C11\u95ED\u5408\u62EC\u53F7'" + NodeType[endType] + "'\uFF0C\u5728" + (errorPos.lineEnd + 1) + ":" + (errorPos.columnEnd + 1));
+                    pushError(list[list.length - 1], "\u7F3A\u5C11\u95ED\u5408\u62EC\u53F7'" + NodeType[endType] + "'");
+                    //自动补充一个符号
+                    list.push(new WordNode(endType, null, 0, 0, 0));
                 }
                 return nodeList.length;
             };
-            readBracket(0, groupList);
-            //1、读取左值
-            //2、读取运算符
-            //3、读取右值，如果右值右边的运算符顺序>当前运算符，则递归读取右边完整的值
-            //4、最终形成可直接执行的树
-            var getPN = function (op) {
-                if (op.type < NodeType.P1) {
-                    return NodeType.P1;
+            var unaryExp = function (list, startPriority, endPriority) {
+                if (list.length <= 1) {
+                    return list;
                 }
-                else if (op.type < NodeType.P2) {
-                    return NodeType.P2;
-                }
-                else if (op.type < NodeType.P3) {
-                    return NodeType.P3;
-                }
-                else if (op.type < NodeType.P4) {
-                    return NodeType.P4;
-                }
-                else if (op.type < NodeType.P5) {
-                    return NodeType.P5;
-                }
-                else if (op.type < NodeType.P6) {
-                    return NodeType.P6;
-                }
-                else if (op.type < NodeType.P7) {
-                    return NodeType.P7;
-                }
-                else if (op.type < NodeType.P8) {
-                    return NodeType.P8;
-                }
-                else if (op.type < NodeType.P9) {
-                    return NodeType.P9;
-                }
-                else if (op.type < NodeType.P10) {
-                    return NodeType.P10;
-                }
-                else {
-                    throw expression + " 目标不是运算符" + NodeType[op.type] + " " + String(op.value) + ("\u5728 " + op.lineStart + ":" + op.columnStart + " - " + op.lineEnd + ":" + op.columnEnd);
-                }
-            };
-            /**
-             * 解析的起点，此时会产生左值，并向下持续链接。
-             * 一般为：
-             * 1. 语句的一开始 例如： a+b+c 的 a
-             * 2. 运算符优先级的一开始 例如： a+b*c+d 的 b
-             * 3. 括号内的一开始 例如 a*(b+c) 的 b
-             * 4. 函数调用参数的一开始，例如 a(b+c,d+e) 中的 b 和 d
-             *
-             * 所有需要重新开始的地方都应该调用该函数
-             *
-             * 计算后返回ASTNode和新的开始点
-             */
-            var readGroup = function (group) {
-                var startRead = function (pos, endPos) {
-                    var currentPos = pos;
-                    var currentNode;
-                    var frontAnnotation;
-                    var joinNode = function (node) {
-                        if (currentNode != null) {
-                            if (currentNode.operator > NodeType.P10 && currentNode.operator < NodeType.P11) {
-                                node.left = currentNode.left;
-                            }
-                            else {
-                                node.left = currentNode;
-                            }
+                //当前环境下单目运算符只会在值的左边
+                //连续多个单目运算符从右往左组合运算
+                var rlist = [];
+                var currentAST;
+                for (var i = list.length - 1; i >= 0; i--) {
+                    var a = list[i];
+                    var b = list[i - 1];
+                    if (b instanceof WordNode && b.type > startPriority && b.type < endPriority) {
+                        if (a == null) {
+                            pushError(a, "一元运算符" + NodeType[b.type] + "缺少右值");
+                            a = new WordNode(NodeType.boolean, true, 0, 0, 0); //自动补充
                         }
-                        if (node.right instanceof ASTNode && node.right.operator > NodeType.P10 && node.right.operator < NodeType.P11) {
-                            node.right = node.right.left;
-                        }
-                        if (node.right) {
-                            node.right.parent = node;
-                        }
-                        if (node.left) {
-                            node.left.parent = node;
-                        }
-                        currentNode = node;
-                        if (frontAnnotation) {
-                            currentNode.frontAnnotation = frontAnnotation;
-                            frontAnnotation = undefined;
-                        }
-                    };
-                    var readFunc = function (nameNode, paramNodeList) {
-                        //函数调用
-                        if (paramNodeList.length == 2) {
-                            //无参函数
-                            return new ASTNode(nameNode, NodeType.call, []);
+                        if (currentAST == null) {
+                            //第一次发现
+                            currentAST = new UnitaryASTNode(b.type, genAST(a instanceof Array ? a : [a]));
                         }
                         else {
-                            //开始读取参数
-                            var parList = [];
-                            var s = 1;
-                            var stopList_2 = [];
-                            paramNodeList.forEach(function (a, index) {
-                                if (a.type == NodeType[","] || a.type == NodeType[")"]) {
-                                    stopList_2.push(index);
-                                }
-                            });
-                            for (var _i = 0, stopList_1 = stopList_2; _i < stopList_1.length; _i++) {
-                                var v = stopList_1[_i];
-                                var p = readGroup(paramNodeList.slice(s, v));
-                                if (p.operator > NodeType.P10 && p.operator < NodeType.P11) {
-                                    parList.push(p.left);
-                                }
-                                else {
-                                    parList.push(p);
-                                }
-                                s = v + 1;
-                            }
-                            return new ASTNode(nameNode, NodeType.call, parList);
+                            //多个单目运算符连续
+                            currentAST = new UnitaryASTNode(b.type, currentAST);
                         }
-                    };
-                    var maxCount = 10000;
-                    var count = 0;
-                    while (currentPos <= endPos) {
-                        if (count++ >= maxCount) {
-                            throw "语法树分析死循环=>" + expression;
-                        }
-                        var op = group[currentPos];
-                        if (op instanceof Array) {
-                            joinNode(readGroup(op));
-                            currentPos++;
-                        }
-                        else if (op.type == NodeType.word && group[currentPos + 1] instanceof Array && group[currentPos + 1][0] instanceof WordNode && group[currentPos + 1][0].type == NodeType["("]) {
-                            //函数调用
-                            joinNode(readFunc(op, group[currentPos + 1]));
-                            currentPos += 2;
-                        }
-                        else {
-                            if (op.type < NodeType.P9) {
-                                //运算符
-                                var right = group[currentPos + 1];
-                                var rightOp = group[currentPos + 2];
-                                if (right instanceof WordNode && right.type == NodeType.word && rightOp instanceof Array && rightOp[0] instanceof WordNode && rightOp[0].type == NodeType["("]) {
-                                    //运算符右侧为函数调用，调用后，还需要考虑后面的运算符顺序
-                                    var funcNode = readFunc(right, rightOp);
-                                    var rightOp2 = group[currentPos + 3];
-                                    if (rightOp2 && rightOp2 instanceof WordNode && rightOp2.type < NodeType.P9 && getPN(rightOp2) < getPN(op) //+a().b 的情况
-                                        ||
-                                            (rightOp2 && rightOp2 instanceof Array && rightOp2[0] instanceof WordNode && rightOp2[0].type == NodeType["["] && getPN(rightOp2[0]) < getPN(op)) // +a()["c"] 的情况
-                                    ) {
-                                        //先执行函数，再执行后面的逻辑，最后回到当前运算符
-                                        var r = startRead(currentPos + 3, endPos);
-                                        r.node.left = funcNode;
-                                        joinNode(new ASTNode(null, op.type, r.node));
-                                        currentPos = r.pos;
-                                    }
-                                    else {
-                                        if (op.type == NodeType["."]) {
-                                            //优先插入名字，最后组成函数访问链接
-                                            joinNode(new ASTNode(null, op.type, right)); //插入名字
-                                            joinNode(funcNode); //插入函数执行块
-                                        }
-                                        else {
-                                            //先执行函数
-                                            joinNode(new ASTNode(null, op.type, funcNode));
-                                        }
-                                        currentPos += 3;
-                                    }
-                                }
-                                else if ((right && right instanceof WordNode && right.type < NodeType.P9) // + !a 的情况
-                                    ||
-                                        (rightOp && rightOp instanceof WordNode && rightOp.type < NodeType.P9 && getPN(rightOp) < getPN(op)) // + b * c 的情况
-                                    ||
-                                        (rightOp && rightOp instanceof Array && rightOp[0] instanceof WordNode && rightOp[0].type == NodeType["["] && getPN(rightOp[0]) < getPN(op)) // + a["c"] 的情况
-                                ) {
-                                    //右侧运算符优先
-                                    var r = startRead(currentPos + 1, endPos);
-                                    joinNode(new ASTNode(null, op.type, r.node));
-                                    currentPos = r.pos;
-                                }
-                                else {
-                                    //从左到右的顺序
-                                    joinNode(new ASTNode(null, op.type, right instanceof Array ? readGroup(right) : right));
-                                    currentPos = currentPos + 2;
-                                }
-                            }
-                            else if (op.type > NodeType.P10 && op.type < NodeType.P11) {
-                                joinNode(new ASTNode(op, op.type, null));
-                                currentPos++;
-                            }
-                            else if (op.type == NodeType.annotation) {
-                                if (currentNode != null) {
-                                    currentNode.behindAnnotation = op.value;
-                                }
-                                else {
-                                    frontAnnotation = op.value;
-                                }
-                                currentPos++;
-                            }
-                            else {
-                                throw expression + " 解析异常" + NodeType[op.type];
-                            }
-                        }
-                    }
-                    return { node: currentNode, pos: currentPos };
-                };
-                var first = group[0];
-                if (first instanceof WordNode && first.type == NodeType["("]) {
-                    //只是个group，可以忽略前后的()
-                    return startRead(1, group.length - 2).node;
-                }
-                else if (first instanceof WordNode && first.type == NodeType["["]) {
-                    //.的另一种访问形式
-                    return new ASTNode(null, NodeType["."], startRead(1, group.length - 2).node);
-                }
-                else if (first instanceof WordNode && first.type == NodeType["{"]) {
-                    //子表达式
-                    return new ASTNode(null, NodeType.lambda, startRead(1, group.length - 2).node);
-                }
-                else {
-                    return startRead(0, group.length - 1).node;
-                }
-            };
-            return readGroup(groupList);
-        };
-        Interpreter.toStringAST = function (ast, isRoot) {
-            var _this = this;
-            if (isRoot === void 0) { isRoot = true; }
-            var r = "";
-            if (!isRoot && ast instanceof ASTNode) {
-                r += "(";
-            }
-            if (ast instanceof ASTNode) {
-                if (ast.operator == NodeType.call) {
-                    r += this.toStringAST(ast.left) + "(" + this.toStringAST(ast.right, false) + ")";
-                }
-                else if (ast.left == null) {
-                    if (ast.operator == NodeType.lambda) {
-                        r += "{" + this.toStringAST(ast.right, true) + "}";
                     }
                     else {
-                        r += NodeType[ast.operator] + " " + this.toStringAST(ast.right, false);
+                        if (currentAST) {
+                            //一轮连续的单目运算符组合完毕
+                            rlist.push(currentAST);
+                            currentAST = undefined;
+                        }
+                        else {
+                            rlist.push(a); //上次必然已经被加入了ast中，因此不需要push
+                        }
                     }
                 }
-                else if (ast.right == null) {
-                    r += "" + this.toStringAST(ast.left, false);
+                if (currentAST) {
+                    //边界对象不要遗留
+                    rlist.push(currentAST);
+                }
+                return rlist.reverse(); //转为正常的顺序
+            };
+            var binaryExp = function (list, startPriority, endPriority) {
+                if (list.length <= 1) {
+                    return list;
+                }
+                var rlist = [];
+                var currentAST;
+                for (var i = 1, l = list.length; i < l; i++) {
+                    var a = list[i - 1];
+                    var b = list[i];
+                    var c = list[i + 1];
+                    if (b instanceof WordNode && b.type > startPriority && b.type < endPriority) {
+                        if (c == null) {
+                            pushError(a, "二元运算符" + NodeType[b.type] + "缺少右值");
+                            c = new WordNode(NodeType.number, 0, 0, 0, 0); //自动补充
+                        }
+                        if (currentAST == null) {
+                            //第一次发现
+                            rlist.pop(); //删除上次循环所插入的b
+                            currentAST = new BinaryASTNode(genAST(a instanceof Array ? a : [a]), b.type, genAST(c instanceof Array ? c : [c]));
+                        }
+                        else {
+                            //多次双目运算符连续
+                            currentAST = new BinaryASTNode(currentAST, b.type, genAST(c instanceof Array ? c : [c]));
+                        }
+                        //特殊处理 . 和 [] 后续逻辑，可能会紧跟着函数调用
+                        var d = list[i + 2];
+                        if (endPriority == NodeType.P1 && d instanceof Array && d[0] instanceof WordNode && d[0].type == NodeType["("]) {
+                            currentAST = new CallASTNode(currentAST, genParamList(d));
+                            i++; //跳过d的遍历
+                        }
+                        i++; //跳过c的遍历
+                    }
+                    //特殊处理，仅处理a['b']中括号的访问方式。
+                    else if (b instanceof Array && b[0] instanceof WordNode && b[0].type == NodeType["["]) {
+                        //中括号方式访问属性
+                        if (currentAST) {
+                            currentAST = new BinaryASTNode(currentAST, NodeType["["], genAST(b));
+                        }
+                        else {
+                            rlist.pop(); //删除上次循环所插入的b
+                            currentAST = new BinaryASTNode(genAST(a instanceof Array ? a : [a]), NodeType["["], genAST(b));
+                        }
+                        //特殊处理 . 和 [] 后续逻辑，可能会紧跟着函数调用
+                        if (endPriority == NodeType.P1 && c instanceof Array && c[0] instanceof WordNode && c[0].type == NodeType["("]) {
+                            currentAST = new CallASTNode(currentAST, genParamList(c));
+                            i++; //跳过c的遍历
+                        }
+                    }
+                    else {
+                        if (currentAST) {
+                            if (endPriority == NodeType.P1 && b instanceof Array && b[0] instanceof WordNode && b[0].type == NodeType["("]) {
+                                currentAST = new CallASTNode(currentAST, genParamList(b));
+                                continue;
+                            }
+                            else {
+                                //一轮连续的双目运算符组合完毕
+                                rlist.push(currentAST);
+                                currentAST = undefined;
+                            }
+                        }
+                        else if (endPriority == NodeType.P1 && a instanceof WordNode && a.type == NodeType.word && b instanceof Array && b[0] instanceof WordNode && b[0].type == NodeType["("]) {
+                            //特殊处理 . 和 [] 后续逻辑，可能会紧跟着函数调用
+                            currentAST = new CallASTNode(genAST(a instanceof Array ? a : [a]), genParamList(b));
+                            continue; //a和b都需要插入到rlist
+                        }
+                        if (i == 1) { //由于是从1开始遍历的，因此需要保留0的值
+                            rlist.push(a);
+                        }
+                        rlist.push(b);
+                    }
+                }
+                if (currentAST) {
+                    //边界对象不要遗留
+                    rlist.push(currentAST);
+                }
+                return rlist;
+            };
+            var splice = function (list, sp) {
+                var r = [];
+                var current = [];
+                for (var _i = 0, list_2 = list; _i < list_2.length; _i++) {
+                    var l = list_2[_i];
+                    //这里会忽略括号
+                    if (l instanceof WordNode) {
+                        if (l.type == sp) {
+                            //产生切割
+                            if (current.length > 0) {
+                                r.push(current);
+                                current = [];
+                            }
+                        }
+                        else if (l.type == NodeType["("] || l.type == NodeType[")"] || l.type == NodeType["["] || l.type == NodeType["]"] || l.type == NodeType["{"] || l.type == NodeType["}"]) {
+                            //跳过该字符
+                        }
+                        else {
+                            current.push(l);
+                        }
+                    }
+                    else {
+                        current.push(l);
+                    }
+                }
+                if (current.length > 0) {
+                    r.push(current);
+                }
+                return r;
+            };
+            var genParamList = function (list) {
+                var paramList = splice(list, NodeType[","]);
+                var rlist = [];
+                for (var _i = 0, paramList_1 = paramList; _i < paramList_1.length; _i++) {
+                    var p = paramList_1[_i];
+                    rlist.push(genAST(p));
+                }
+                return rlist;
+            };
+            var genAST = function (sourcelist) {
+                if (sourcelist.length == 1 && sourcelist[0] instanceof ASTNodeBase) {
+                    return sourcelist[0];
+                }
+                var list = sourcelist;
+                //进行括号处理
+                var bracketType;
+                var a = list[0];
+                var b = list[list.length - 1];
+                if (a instanceof WordNode && b instanceof WordNode &&
+                    (a.type == NodeType["("] && b.type == NodeType[")"] ||
+                        a.type == NodeType["["] && b.type == NodeType["]"] ||
+                        a.type == NodeType["{"] && b.type == NodeType["}"])) {
+                    bracketType = a.type;
+                    list = list.slice(1, list.length - 1);
+                }
+                list = binaryExp(list, NodeType.P0, NodeType.P1); //分组  . 和 [] 形成访问连接，包括后面的函数
+                list = unaryExp(list, NodeType.P1, NodeType.P2); //分组  ! ，进行一元表达式分组
+                list = binaryExp(list, NodeType.P2, NodeType.P3); //分组  **，进行2元表达式分组
+                list = binaryExp(list, NodeType.P3, NodeType.P4); //分组  * / %，进行2元表达式分组
+                list = binaryExp(list, NodeType.P4, NodeType.P5); //分组  + -，进行2元表达式分组
+                list = binaryExp(list, NodeType.P5, NodeType.P6); //分组  > < >= <=，进行2元表达式分组
+                list = binaryExp(list, NodeType.P6, NodeType.P7); //分组  != ==，进行2元表达式分组
+                list = binaryExp(list, NodeType.P7, NodeType.P8); //分组  && ，进行2元表达式分组
+                list = binaryExp(list, NodeType.P8, NodeType.P9); //分组  ||，进行2元表达式分组
+                var result;
+                if (list.length == 1 && list[0] instanceof ASTNodeBase) {
+                    //正常返回
+                    result = list[0];
+                }
+                else if (list.length == 1 && list[0] instanceof WordNode) {
+                    //单纯的数值
+                    result = new ValueASTNode(list[0]);
+                }
+                else if (list.length > 1) {
+                    pushError(sourcelist[0], "解析后节点列表无法归一");
+                    result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
+                }
+                else if (list.length == 0) {
+                    pushError(sourcelist[0], "无法正确解析列表");
+                    result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
                 }
                 else {
-                    r += this.toStringAST(ast.left, false) + " " + NodeType[ast.operator] + " " + this.toStringAST(ast.right, false);
+                    result = new ValueASTNode(new WordNode(NodeType.number, 0, 0, 0, 0));
+                }
+                if (bracketType !== undefined) {
+                    return new BracketASTNode(bracketType, result);
+                }
+                else {
+                    return result;
+                }
+            };
+            convertBracket(0, bracketList); //分组括号
+            return genAST(bracketList);
+        };
+        Interpreter.toStringAST = function (ast, addBracket) {
+            var _this = this;
+            var r = "";
+            if (addBracket && !(ast instanceof ValueASTNode || ast instanceof BracketASTNode)) {
+                r += "(";
+            }
+            if (ast instanceof ValueASTNode) {
+                if (ast.value.type == NodeType.string) {
+                    r += "\"" + ast.value.value + "\"";
+                }
+                else {
+                    r += "" + ast.value.value;
                 }
             }
-            else if (ast instanceof WordNode) {
-                r += ast.type == NodeType.string ? "\"" + ast.value + "\"" : "" + ast.value;
+            else if (ast instanceof BracketASTNode) {
+                if (ast.operator == NodeType["("]) {
+                    r += "(" + this.toStringAST(ast.node, addBracket) + ")";
+                }
+                else if (ast.operator == NodeType["["]) {
+                    r += "[" + this.toStringAST(ast.node, addBracket) + "]";
+                }
+                else if (ast.operator == NodeType["{"]) {
+                    r += "{" + this.toStringAST(ast.node, addBracket) + "}";
+                }
             }
-            else if (ast instanceof Array) {
-                r += ast.map(function (a) { return _this.toStringAST(a, true); }).join(", ");
+            else if (ast instanceof UnitaryASTNode) {
+                r += "" + NodeType[ast.operator] + this.toStringAST(ast.right, addBracket);
             }
-            if (!isRoot && ast instanceof ASTNode) {
+            else if (ast instanceof BinaryASTNode) {
+                if (ast.operator == NodeType["["]) {
+                    r += "" + this.toStringAST(ast.left, addBracket) + this.toStringAST(ast.right, addBracket);
+                }
+                else if (ast.operator == NodeType["."]) {
+                    r += "" + this.toStringAST(ast.left, addBracket) + NodeType[ast.operator] + this.toStringAST(ast.right, addBracket);
+                }
+                else {
+                    r += this.toStringAST(ast.left, addBracket) + " " + NodeType[ast.operator] + " " + this.toStringAST(ast.right, addBracket);
+                }
+            }
+            else if (ast instanceof CallASTNode) {
+                r += this.toStringAST(ast.left, addBracket) + "( " + ast.parameters.map(function (a) { return _this.toStringAST(a, addBracket); }).join(", ") + ")";
+            }
+            if (addBracket && !(ast instanceof ValueASTNode || ast instanceof BracketASTNode)) {
                 r += ")";
             }
             return r;
@@ -944,131 +1053,128 @@ var vm;
         Interpreter.prototype.toString = function () {
             return Interpreter.toStringAST(this.ast);
         };
+        /**
+         * 该函数所执行的表达式将自动进行容错处理
+         * 1. 当访问属性产生null值时，其将不参与计算 例如：a.b+13 当a或b为空时，结果将返回13
+         * 2. 当访问的表达式完全为null时，表达式将最终返回结果0，例如：a.b+c 则返回0
+         * @param environment
+         * @param ast
+         */
         Interpreter.run = function (environment, ast) {
-            var runLogic = function (ast) {
-                if (!ast) {
+            var _this = this;
+            if (ast instanceof ValueASTNode) {
+                return ast.value.value;
+            }
+            else if (ast instanceof BracketASTNode) {
+                return this.run(environment, ast.node); //括号内必然是个整体
+            }
+            else if (ast instanceof UnitaryASTNode) {
+                var b = this.run(environment, ast.right);
+                switch (ast.operator) {
+                    case NodeType["!"]:
+                        return !b;
+                    default:
+                        throw "\u610F\u5916\u7684\u4E00\u5143\u8FD0\u7B97\u7B26" + NodeType[ast.operator] + "}]";
+                }
+            }
+            else if (ast instanceof BinaryASTNode) {
+                if (ast.operator == NodeType["."] || ast.operator == NodeType["["]) {
+                    var a_1 = this.run(environment, ast.left);
+                    if (ast.left instanceof ValueASTNode) {
+                        a_1 = environment[a_1];
+                    }
+                    if (a_1 == null) {
+                        return null; //访问运算遇到null则不执行
+                    }
+                    return a_1[this.run(environment, ast.right)];
+                }
+                var a = this.run(environment, ast.left);
+                var b = this.run(environment, ast.right);
+                if (a == null && b == null) {
                     return null;
                 }
-                if (ast instanceof ASTNode) {
-                    switch (ast.operator) {
-                        case NodeType["."]:
-                            var left = void 0;
-                            if (ast.left instanceof WordNode) {
-                                if (ast.left.type == NodeType.word) {
-                                    left = environment[ast.left.value];
-                                }
-                                else {
-                                    left = ast.left.value;
-                                }
-                            }
-                            else {
-                                left = runLogic(ast.left);
-                            }
-                            var rightWord = void 0;
-                            if (ast.right instanceof WordNode) {
-                                rightWord = ast.right.value;
-                            }
-                            else {
-                                rightWord = runLogic(ast.right);
-                            }
-                            return left[rightWord];
-                        case NodeType["!"]:
-                            return !runLogic(ast.right);
-                        case NodeType["**"]:
-                            return Math.pow(runLogic(ast.left), runLogic(ast.right));
-                        case NodeType["*"]:
-                            return runLogic(ast.left) * runLogic(ast.right);
-                        case NodeType["/"]:
-                            return runLogic(ast.left) / runLogic(ast.right);
-                        case NodeType["%"]:
-                            return runLogic(ast.left) % runLogic(ast.right);
-                        case NodeType["+"]:
-                            return runLogic(ast.left) + runLogic(ast.right);
-                        case NodeType["-"]:
-                            return runLogic(ast.left) - runLogic(ast.right);
-                        case NodeType[">"]:
-                            return runLogic(ast.left) > runLogic(ast.right);
-                        case NodeType["<"]:
-                            return runLogic(ast.left) < runLogic(ast.right);
-                        case NodeType[">="]:
-                            return runLogic(ast.left) >= runLogic(ast.right);
-                        case NodeType["<="]:
-                            return runLogic(ast.left) <= runLogic(ast.right);
-                        case NodeType["!="]:
-                            return runLogic(ast.left) != runLogic(ast.right);
-                        case NodeType["=="]:
-                            return runLogic(ast.left) == runLogic(ast.right);
-                        case NodeType["&&"]:
-                            return runLogic(ast.left) && runLogic(ast.right);
-                        case NodeType["||"]:
-                            return runLogic(ast.left) || runLogic(ast.right);
-                        case NodeType["word"]:
-                        case NodeType["number"]:
-                        case NodeType["string"]:
-                        case NodeType["boolean"]:
-                            return runLogic(ast.left);
-                        case NodeType["call"]:
-                            var self_1;
-                            var target = void 0;
-                            if (ast.left instanceof ASTNode) {
-                                self_1 = runLogic(ast.left.left);
-                                var rightWord_1;
-                                if (ast.left.right instanceof WordNode) {
-                                    rightWord_1 = ast.left.right.value;
-                                }
-                                else {
-                                    rightWord_1 = runLogic(ast.left.right);
-                                }
-                                target = self_1[rightWord_1];
-                            }
-                            else {
-                                target = runLogic(ast.left);
-                            }
-                            var func = void 0;
-                            if (typeof target == "function") {
-                                func = target;
-                            }
-                            else {
-                                func = environment[target];
-                            }
-                            var paramList = [];
-                            var _loop_1 = function (p) {
-                                if (p.operator == NodeType.lambda) {
-                                    //生成新的环境
-                                    var func_1 = function (a) {
-                                        var newEv;
-                                        if (vm.isPrimitive(a)) {
-                                            newEv = { value: a };
-                                        }
-                                        else {
-                                            newEv = a;
-                                        }
-                                        newEv.__proto__ = environment;
-                                        newEv._ = environment;
-                                        return Interpreter.run(newEv, p.right);
-                                    };
-                                    paramList.push(func_1);
-                                }
-                                else {
-                                    paramList.push(runLogic(p));
-                                }
-                            };
-                            for (var _i = 0, _a = ast.right; _i < _a.length; _i++) {
-                                var p = _a[_i];
-                                _loop_1(p);
-                            }
-                            return func.apply(self_1 || environment, paramList);
-                    }
+                else if (a == null && b != null) {
+                    return b;
                 }
-                else if (ast instanceof WordNode) {
-                    if (ast.type == NodeType.word) {
-                        return environment[ast.value];
-                    }
-                    return ast.value;
+                else if (a != null && b == null) {
+                    return a;
                 }
-                throw "AST异常" + JSON.stringify(ast);
-            };
-            return runLogic(ast);
+                switch (ast.operator) {
+                    case NodeType["**"]:
+                        return Math.pow(a, b);
+                    case NodeType["*"]:
+                        return a * b;
+                    case NodeType["/"]:
+                        return a / b;
+                    case NodeType["%"]:
+                        return a % b;
+                    case NodeType["+"]:
+                        return a + b;
+                    case NodeType["-"]:
+                        return a - b;
+                    case NodeType[">"]:
+                        return a > b;
+                    case NodeType["<"]:
+                        return a < b;
+                    case NodeType[">="]:
+                        return a >= b;
+                    case NodeType["<="]:
+                        return a <= b;
+                    case NodeType["!="]:
+                        return a != b;
+                    case NodeType["=="]:
+                        return a == b;
+                    case NodeType["&&"]:
+                        return a && b;
+                    case NodeType["||"]:
+                        return a || b;
+                    default:
+                        throw "\u610F\u5916\u7684\u4E8C\u5143\u8FD0\u7B97\u7B26" + NodeType[ast.operator] + "}]";
+                }
+            }
+            else if (ast instanceof CallASTNode) {
+                var obj = this.run(environment, ast.left);
+                var self_1;
+                var func = void 0;
+                if (ast.left instanceof ValueASTNode) {
+                    //全局函数
+                    func = environment[ast.left.value.value];
+                }
+                else if (ast.left["left"]) {
+                    self_1 = this.run(environment, ast.left["left"]);
+                    if (self_1 == null) {
+                        return null; //self无法获取
+                    }
+                    func = self_1[this.run(environment, ast.left.right)];
+                }
+                if (func == null) {
+                    return null; //func无法获取
+                }
+                if (obj == null) {
+                    //函数无法执行
+                    return null;
+                }
+                var paramList = ast.parameters.map(function (p) {
+                    if (p instanceof BracketASTNode && p.operator == NodeType.lambda) {
+                        return function (a) {
+                            var newEv;
+                            if (vm.isPrimitive(a)) {
+                                newEv = { value: a };
+                            }
+                            else {
+                                newEv = a;
+                            }
+                            newEv.__proto__ = environment;
+                            newEv._ = environment;
+                            return Interpreter.run(newEv, p.node);
+                        };
+                    }
+                    else {
+                        return _this.run(environment, p);
+                    }
+                });
+                return func.apply(self_1 || environment, paramList);
+            }
         };
         Interpreter.prototype.run = function (environment) {
             try {

@@ -121,49 +121,51 @@ declare namespace vm {
     var IdMap: new () => IIdMap;
 }
 declare namespace vm {
-    export enum NodeType {
-        "[" = 0,
-        "(" = 1,
-        "{" = 2,
-        "." = 3,
-        P1 = 4,
-        "!" = 5,
-        P2 = 6,
-        "**" = 7,
-        P3 = 8,
-        "*" = 9,
-        "/" = 10,
-        "%" = 11,
-        P4 = 12,
-        "+" = 13,
-        "-" = 14,
-        P5 = 15,
-        ">" = 16,
-        "<" = 17,
-        ">=" = 18,
-        "<=" = 19,
-        P6 = 20,
-        "!=" = 21,
-        "==" = 22,
-        P7 = 23,
-        "&&" = 24,
-        "||" = 25,
+    enum NodeType {
+        P0 = 0,
+        "[" = 1,
+        "(" = 2,
+        "{" = 3,
+        "." = 4,
+        P1 = 5,
+        "!" = 6,
+        P2 = 7,
+        "**" = 8,
+        P3 = 9,
+        "*" = 10,
+        "/" = 11,
+        "%" = 12,
+        P4 = 13,
+        "+" = 14,
+        "-" = 15,
+        P5 = 16,
+        ">" = 17,
+        "<" = 18,
+        ">=" = 19,
+        "<=" = 20,
+        P6 = 21,
+        "!=" = 22,
+        "==" = 23,
+        P7 = 24,
+        "&&" = 25,
         P8 = 26,
-        "," = 27,
+        "||" = 27,
         P9 = 28,
-        "]" = 29,
-        ")" = 30,
-        "}" = 31,
-        P10 = 32,
-        "number" = 33,
-        "word" = 34,
-        "string" = 35,
-        "boolean" = 36,
-        "null" = 37,
-        P11 = 38,
-        "annotation" = 39,
-        "call" = 40,
-        "lambda" = 41
+        "," = 29,
+        P10 = 30,
+        "]" = 31,
+        ")" = 32,
+        "}" = 33,
+        P11 = 34,
+        "number" = 35,
+        "word" = 36,
+        "string" = 37,
+        "boolean" = 38,
+        "null" = 39,
+        P12 = 40,
+        "annotation" = 41,
+        "call" = 42,
+        "lambda" = 43
     }
     class WordNode {
         type: NodeType;
@@ -180,30 +182,110 @@ declare namespace vm {
         behindAnnotation: string | undefined;
         constructor(type: NodeType, value: any, lineStart: number, columnStart: number, columnEnd: number);
     }
-    class ASTNode {
-        left: ASTNode | WordNode | null;
+    type ASTNode = ValueASTNode | BracketASTNode | UnitaryASTNode | BinaryASTNode | CallASTNode;
+    class ASTNodeBase {
+        /**
+         * 操作符
+         */
         operator: NodeType;
-        right: ASTNode | WordNode | ASTNode[] | null;
-        parent: ASTNode | null;
+        parent: UnitaryASTNode | BinaryASTNode | CallASTNode | null;
         /**
          * 相关注释
          */
         frontAnnotation: string | undefined;
         behindAnnotation: string | undefined;
-        constructor(left: ASTNode | WordNode | null, //一元运算符允许为空
-        operator: NodeType, right: ASTNode | WordNode | ASTNode[] | null);
+        constructor(
+        /**
+         * 操作符
+         */
+        operator: NodeType);
     }
-    export class Interpreter {
+    class ValueASTNode extends ASTNodeBase {
+        value: WordNode;
+        constructor(value: WordNode);
+    }
+    class BracketASTNode extends ASTNodeBase {
+        operator: NodeType;
+        node: ASTNode;
+        constructor(operator: NodeType, node: ASTNode);
+    }
+    class UnitaryASTNode extends ASTNodeBase {
+        operator: NodeType;
+        /**
+         * 一元表达式的右值
+         */
+        right: ASTNode;
+        constructor(operator: NodeType, 
+        /**
+         * 一元表达式的右值
+         */
+        right: ASTNode);
+    }
+    class BinaryASTNode extends ASTNodeBase {
+        /**
+         * 二元表达式的左值
+         */
+        left: ASTNode;
+        /**
+         * 运算符
+         */
+        operator: NodeType;
+        /**
+         * 二元表达式的左值
+         */
+        right: ASTNode;
+        constructor(
+        /**
+         * 二元表达式的左值
+         */
+        left: ASTNode, 
+        /**
+         * 运算符
+         */
+        operator: NodeType, 
+        /**
+         * 二元表达式的左值
+         */
+        right: ASTNode);
+    }
+    class CallASTNode extends ASTNodeBase {
+        /**
+         * 函数访问节点
+         */
+        left: ASTNode;
+        /**
+         * 函数参数列表
+         */
+        parameters: ASTNode[];
+        constructor(
+        /**
+         * 函数访问节点
+         */
+        left: ASTNode, 
+        /**
+         * 函数参数列表
+         */
+        parameters: ASTNode[]);
+    }
+    class Interpreter {
         expression: string;
         ast: ASTNode;
+        astErrorList: string[];
         constructor(expression: string);
         static toWords(expression: string): WordNode[];
-        static toAST(nodeList: WordNode[], expression: string): ASTNode;
-        static toStringAST(ast: ASTNode | WordNode | ASTNode[], isRoot?: boolean): string;
+        static toAST(nodeList: WordNode[], expression: string, errorList: string[]): ASTNode;
+        static toStringAST(ast: ASTNode, addBracket?: boolean): string;
         toString(): string;
+        /**
+         * 该函数所执行的表达式将自动进行容错处理
+         * 1. 当访问属性产生null值时，其将不参与计算 例如：a.b+13 当a或b为空时，结果将返回13
+         * 2. 当访问的表达式完全为null时，表达式将最终返回结果0，例如：a.b+c 则返回0
+         * @param environment
+         * @param ast
+         */
         static run(environment: {
             [key: string]: any;
-        }, ast: WordNode | ASTNode | null): any;
+        }, ast: ASTNode): any;
         run(environment: {
             [key: string]: any;
         }): any;
@@ -211,18 +293,17 @@ declare namespace vm {
     /**
      * 基础环境
      */
-    export var environment: {
+    var environment: {
         [key: string]: any;
     };
     /**
      * 继承自基础属性
      */
-    export function extendsEnvironment(obj: any): void;
+    function extendsEnvironment(obj: any): void;
     /**
      * 向目标对象实现所有基础属性
      */
-    export function implementEnvironment(obj: any): any;
-    export {};
+    function implementEnvironment(obj: any): any;
 }
 declare namespace vm {
     /**
