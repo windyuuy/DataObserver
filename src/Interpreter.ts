@@ -63,7 +63,7 @@ namespace vm {
 
     export class ASTNodeBase {
         //父节点
-        public parent: UnitaryASTNode | BinaryASTNode | CallASTNode | null = null;
+        public parent: ASTNode | null = null;
         /**
          * 相关注释
          */
@@ -511,6 +511,7 @@ namespace vm {
                         } else if (endPriority == NodeType.P1 && a instanceof WordNode && a.type == NodeType.word && b instanceof Array && b[0] instanceof WordNode && b[0].type == NodeType["("]) {
                             //特殊处理 . 和 [] 后续逻辑，可能会紧跟着函数调用
                             currentAST = new CallASTNode(genAST(a instanceof Array ? a : [a]), genParamList(b));
+                            rlist.pop() //删除上次循环所插入的b
                             continue;//a和b都需要插入到rlist
                         }
                         if (i == 1) {//由于是从1开始遍历的，因此需要保留0的值
@@ -623,6 +624,7 @@ namespace vm {
                 }
             }
 
+            nodeList = nodeList.filter(a => a.type != NodeType.annotation)
             convertBracket(0, bracketList)//分组括号
             return genAST(bracketList);
         }
@@ -680,7 +682,11 @@ namespace vm {
         static run(environment: { [key: string]: any }, ast: ASTNode): any {
 
             if (ast instanceof ValueASTNode) {
-                return ast.value.value;
+                if (ast.operator == vm.NodeType.word) {
+                    return environment[ast.value.value];
+                } else {
+                    return ast.value.value;
+                }
             } else if (ast instanceof BracketASTNode) {
                 return this.run(environment, ast.node)//括号内必然是个整体
             } else if (ast instanceof UnitaryASTNode) {
@@ -695,23 +701,26 @@ namespace vm {
 
                 if (ast.operator == NodeType["."] || ast.operator == NodeType["["]) {
                     let a: any = this.run(environment, ast.left)
-                    if (ast.left instanceof ValueASTNode) {
-                        a = environment[a];
-                    }
                     if (a == null) {
                         return null;//访问运算遇到null则不执行
                     }
-                    return a[this.run(environment, ast.right)];
+                    if (ast.right instanceof ValueASTNode) {
+                        return a[ast.right.value.value];
+                    } else {
+                        return a[this.run(environment, ast.right)];
+                    }
                 }
                 let a = this.run(environment, ast.left)
                 let b = this.run(environment, ast.right)
 
-                if (a == null && b == null) {
-                    return null;
-                } else if (a == null && b != null) {
-                    return b;
-                } else if (a != null && b == null) {
-                    return a;
+                if (!(ast.operator == NodeType["&&"] || ast.operator == NodeType["||"] || ast.operator == NodeType["=="] || ast.operator == NodeType["!="])) {
+                    if (a == null && b == null) {
+                        return null;
+                    } else if (a == null && b != null) {
+                        return b;
+                    } else if (a != null && b == null) {
+                        return a;
+                    }
                 }
                 switch (ast.operator) {
                     case NodeType["**"]:
@@ -754,12 +763,16 @@ namespace vm {
                 if (ast.left instanceof ValueASTNode) {
                     //全局函数
                     func = environment[ast.left.value.value];
-                } else if ((ast.left as any)["left"]) {
-                    self = this.run(environment, (ast.left as any)["left"]);
+                } else if (ast.left instanceof BinaryASTNode) {
+                    self = this.run(environment, ast.left.left);
                     if (self == null) {
                         return null;//self无法获取
                     }
-                    func = self[this.run(environment, (ast.left as any).right)];
+                    if (ast.left.right instanceof ValueASTNode) {
+                        func = self[ast.left.right.value.value];
+                    } else {
+                        func = self[this.run(environment, ast.left.right)];
+                    }
                 }
                 if (func == null) {
                     return null;//func无法获取

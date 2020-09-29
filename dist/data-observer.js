@@ -97,7 +97,7 @@ var vm;
             //实现基础方法，用于表达式中方便得调用
             vm.implementEnvironment(this);
         }
-        Host.prototype.$watch = function (expOrFn, cb) {
+        Host.prototype.$watch = function (expOrFn, cb, loseValue) {
             if (this.$isDestroyed) {
                 console.error("the host is destroyed", this);
                 return;
@@ -105,7 +105,7 @@ var vm;
             if (!(this.__ob__ instanceof vm.Observer)) {
                 vm.observe(this);
             }
-            var watcher = new vm.Watcher(this, expOrFn, cb);
+            var watcher = new vm.Watcher(this, expOrFn, cb, { loseValue: loseValue });
             this.$watchers.push(watcher);
             return watcher;
         };
@@ -444,10 +444,10 @@ var vm;
     vm.WordNode = WordNode;
     var ASTNodeBase = /** @class */ (function () {
         function ASTNodeBase(
-            /**
-             * 操作符
-             */
-            operator) {
+        /**
+         * 操作符
+         */
+        operator) {
             this.operator = operator;
             //父节点
             this.parent = null;
@@ -478,11 +478,11 @@ var vm;
     vm.BracketASTNode = BracketASTNode;
     var UnitaryASTNode = /** @class */ (function (_super) {
         __extends(UnitaryASTNode, _super);
-        function UnitaryASTNode(operator,
-            /**
-             * 一元表达式的右值
-             */
-            right) {
+        function UnitaryASTNode(operator, 
+        /**
+         * 一元表达式的右值
+         */
+        right) {
             var _this = _super.call(this, operator) || this;
             _this.operator = operator;
             _this.right = right;
@@ -495,18 +495,18 @@ var vm;
     var BinaryASTNode = /** @class */ (function (_super) {
         __extends(BinaryASTNode, _super);
         function BinaryASTNode(
-            /**
-             * 二元表达式的左值
-             */
-            left,
-            /**
-             * 运算符
-             */
-            operator,
-            /**
-             * 二元表达式的左值
-             */
-            right) {
+        /**
+         * 二元表达式的左值
+         */
+        left, 
+        /**
+         * 运算符
+         */
+        operator, 
+        /**
+         * 二元表达式的左值
+         */
+        right) {
             var _this = _super.call(this, operator) || this;
             _this.left = left;
             _this.operator = operator;
@@ -521,14 +521,14 @@ var vm;
     var CallASTNode = /** @class */ (function (_super) {
         __extends(CallASTNode, _super);
         function CallASTNode(
-            /**
-             * 函数访问节点
-             */
-            left,
-            /**
-             * 函数参数列表
-             */
-            parameters) {
+        /**
+         * 函数访问节点
+         */
+        left, 
+        /**
+         * 函数参数列表
+         */
+        parameters) {
             var _this = _super.call(this, NodeType.call) || this;
             _this.left = left;
             _this.parameters = parameters;
@@ -895,7 +895,7 @@ var vm;
                         else if (endPriority == NodeType.P1 && a instanceof WordNode && a.type == NodeType.word && b instanceof Array && b[0] instanceof WordNode && b[0].type == NodeType["("]) {
                             //特殊处理 . 和 [] 后续逻辑，可能会紧跟着函数调用
                             currentAST = new CallASTNode(genAST(a instanceof Array ? a : [a]), genParamList(b));
-                            rlist.pop() //删除上次循环所插入的b
+                            rlist.pop(); //删除上次循环所插入的b
                             continue; //a和b都需要插入到rlist
                         }
                         if (i == 1) { //由于是从1开始遍历的，因此需要保留0的值
@@ -1006,6 +1006,7 @@ var vm;
                     return result;
                 }
             };
+            nodeList = nodeList.filter(function (a) { return a.type != NodeType.annotation; });
             convertBracket(0, bracketList); //分组括号
             return genAST(bracketList);
         };
@@ -1069,7 +1070,12 @@ var vm;
         Interpreter.run = function (environment, ast) {
             var _this = this;
             if (ast instanceof ValueASTNode) {
-                return ast.value.value;
+                if (ast.operator == vm.NodeType.word) {
+                    return environment[ast.value.value];
+                }
+                else {
+                    return ast.value.value;
+                }
             }
             else if (ast instanceof BracketASTNode) {
                 return this.run(environment, ast.node); //括号内必然是个整体
@@ -1086,24 +1092,28 @@ var vm;
             else if (ast instanceof BinaryASTNode) {
                 if (ast.operator == NodeType["."] || ast.operator == NodeType["["]) {
                     var a_1 = this.run(environment, ast.left);
-                    if (ast.left instanceof ValueASTNode) {
-                        a_1 = environment[a_1];
-                    }
                     if (a_1 == null) {
                         return null; //访问运算遇到null则不执行
                     }
-                    return a_1[this.run(environment, ast.right)];
+                    if (ast.right instanceof ValueASTNode) {
+                        return a_1[ast.right.value.value];
+                    }
+                    else {
+                        return a_1[this.run(environment, ast.right)];
+                    }
                 }
                 var a = this.run(environment, ast.left);
                 var b = this.run(environment, ast.right);
-                if (a == null && b == null) {
-                    return null;
-                }
-                else if (a == null && b != null) {
-                    return b;
-                }
-                else if (a != null && b == null) {
-                    return a;
+                if (!(ast.operator == NodeType["&&"] || ast.operator == NodeType["||"] || ast.operator == NodeType["=="] || ast.operator == NodeType["!="])) {
+                    if (a == null && b == null) {
+                        return null;
+                    }
+                    else if (a == null && b != null) {
+                        return b;
+                    }
+                    else if (a != null && b == null) {
+                        return a;
+                    }
                 }
                 switch (ast.operator) {
                     case NodeType["**"]:
@@ -1146,12 +1156,17 @@ var vm;
                     //全局函数
                     func = environment[ast.left.value.value];
                 }
-                else if (ast.left["left"]) {
-                    self_1 = this.run(environment, ast.left["left"]);
+                else if (ast.left instanceof BinaryASTNode) {
+                    self_1 = this.run(environment, ast.left.left);
                     if (self_1 == null) {
                         return null; //self无法获取
                     }
-                    func = self_1[this.run(environment, ast.left.right)];
+                    if (ast.left.right instanceof ValueASTNode) {
+                        func = self_1[ast.left.right.value.value];
+                    }
+                    else {
+                        func = self_1[this.run(environment, ast.left.right)];
+                    }
                 }
                 if (func == null) {
                     return null; //func无法获取
@@ -1281,11 +1296,11 @@ var vm;
     /**
      * 拦截对象所有的key和value
      */
-    function defineReactive(obj, key,
-        /**
-         * 对象的默认值，也就是 obj[key]
-         */
-        val) {
+    function defineReactive(obj, key, 
+    /**
+     * 对象的默认值，也就是 obj[key]
+     */
+    val) {
         //必包的中依赖，相当于是每一个属性的附加对象，用于记录属性的所有以来侦听。
         var dep = new vm.Dep();
         var property = Object.getOwnPropertyDescriptor(obj, key);
@@ -1384,25 +1399,11 @@ var vm;
             this.temp = temp;
             for (var _i = 0, temp_2 = temp; _i < temp_2.length; _i++) {
                 var w = temp_2[_i];
-                try {
-                    w.run();
-                }
-                catch (e) {
-                    console.error(e);
-                    this.errorTemp.push(w);
-                }
-            }
-            if (this.errorTemp.length > 0) {
-                for (var _a = 0, _b = this.errorTemp; _a < _b.length; _a++) {
-                    var w = _b[_a];
-                    this.queue.push(w); //失败的表达式将每帧重复执行
-                }
+                w.run();
             }
             temp.length = 0;
-            this.errorTemp.length = 0;
         };
         Tick.temp = [];
-        Tick.errorTemp = [];
         Tick.queue = [];
         Tick.queueMap = new vm.IdMap();
         return Tick;
@@ -1417,9 +1418,11 @@ var vm;
             // options
             if (options) {
                 this.sync = !!options.sync;
+                this.loseValue = options.loseValue;
             }
             else {
                 this.sync = false;
+                this.loseValue = undefined;
             }
             this.cb = cb;
             this.id = ++vm.uid;
@@ -1447,7 +1450,17 @@ var vm;
             /*开始收集依赖*/
             vm.Dep.pushCollectTarget(this);
             var value;
-            value = this.getter.call(this.host, this.host);
+            try {
+                value = this.getter.call(this.host, this.host);
+            }
+            catch (e) {
+                console.error(e);
+                value = null;
+            }
+            //当get失败，则使用loseValue的值
+            if (this.loseValue !== undefined && value == null) {
+                value = this.loseValue;
+            }
             /*结束收集*/
             vm.Dep.popCollectTarget();
             this.cleanupDeps();

@@ -50,7 +50,7 @@ declare namespace vm {
          * @param expOrFn 访问的数据路径，或数据值的计算函数，当路径中的变量或计算函数所访问的值发生变化时，将会被重新执行
          * @param cb 重新执行后，发生变化则会出发回调函数
          */
-        $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void): Watcher | undefined;
+        $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void, loseValue?: string | number | boolean | undefined): Watcher | undefined;
         /**
          * 释放host，包括所有watch
          */
@@ -60,7 +60,7 @@ declare namespace vm {
         $watchers: Watcher[];
         $isDestroyed: boolean;
         constructor();
-        $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void): Watcher | undefined;
+        $watch(expOrFn: string | Function, cb: (oldValue: any, newValue: any) => void, loseValue?: string | number | boolean | undefined): Watcher | undefined;
         $destroy(): void;
     }
     /**
@@ -188,7 +188,7 @@ declare namespace vm {
          * 操作符
          */
         operator: NodeType;
-        parent: UnitaryASTNode | BinaryASTNode | CallASTNode | null;
+        parent: ASTNode | null;
         /**
          * 相关注释
          */
@@ -335,7 +335,6 @@ declare namespace vm {
 declare namespace vm {
     class Tick {
         protected static temp: Watcher[];
-        protected static errorTemp: Watcher[];
         static queue: Watcher[];
         static queueMap: IIdMap;
         static add(w: Watcher): void;
@@ -379,8 +378,13 @@ declare namespace vm {
          * 执行后的结果值
          */
         value: any;
+        /**
+         * 当执行失败时所要表达值
+         */
+        loseValue?: string | number | boolean | undefined;
         constructor(host: IHost, expOrFn: string | Function, cb: Function, options?: {
             sync?: boolean;
+            loseValue?: string | number | boolean | undefined;
         });
         /**
          * 获取值，并重新收集依赖

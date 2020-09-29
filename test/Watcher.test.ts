@@ -273,7 +273,7 @@ test("tick", () => {
 
     var w = newHost.$watch("boss.hp/boss.hpMax", (newVal, oldVal) => {
         progress = newVal;
-    })
+    }, -1)
     progress = w?.value;
 
     vm.Tick.next();
@@ -281,7 +281,7 @@ test("tick", () => {
 
     Boos.boss = null as any;
     vm.Tick.next();
-    expect(progress).toBe(0.5);
+    expect(progress).toBe(-1);
 
     Boos.boss = {
         active: false,

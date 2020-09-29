@@ -45,18 +45,25 @@ namespace vm {
          */
         value: any;
 
+        /**
+         * 当执行失败时所要表达值
+         */
+        loseValue?: string | number | boolean | undefined;
+
         constructor(
             host: IHost,
             expOrFn: string | Function,
             cb: Function,
-            options?: { sync?: boolean }
+            options?: { sync?: boolean, loseValue?: string | number | boolean | undefined }
         ) {
             this.host = host;
             // options
             if (options) {
                 this.sync = !!options.sync
+                this.loseValue = options.loseValue
             } else {
                 this.sync = false
+                this.loseValue = undefined;
             }
             this.cb = cb
             this.id = ++uid
@@ -88,7 +95,17 @@ namespace vm {
             Dep.pushCollectTarget(this)
 
             let value
-            value = this.getter.call(this.host, this.host)
+            try {
+                value = this.getter.call(this.host, this.host)
+            } catch (e) {
+                console.error(e);
+                value = null;
+            }
+
+            //当get失败，则使用loseValue的值
+            if (this.loseValue !== undefined && value == null) {
+                value = this.loseValue;
+            }
 
             /*结束收集*/
             Dep.popCollectTarget()
