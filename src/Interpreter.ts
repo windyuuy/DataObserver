@@ -361,7 +361,7 @@ namespace vm {
                 if (errorPos) {
                     errorMsg += `，在${errorPos.lineEnd + 1}:${errorPos.columnEnd + 1}。`
                 }
-                errorList.push(expression + msg)
+                errorList.push(errorMsg)
             }
 
             /**
