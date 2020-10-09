@@ -835,6 +835,7 @@ namespace vm {
     export function implementEnvironment(obj: any) {
         let ks = Object.getOwnPropertyNames(environment);
         for (let k of ks) {
+            if (k == "__ob__") continue;
             def(obj, k, environment[k]);
         }
         return obj;

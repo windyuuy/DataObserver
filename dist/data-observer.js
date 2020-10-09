@@ -747,7 +747,7 @@ var vm;
                 if (errorPos) {
                     errorMsg += "\uFF0C\u5728" + (errorPos.lineEnd + 1) + ":" + (errorPos.columnEnd + 1) + "\u3002";
                 }
-                errorList.push(expression + msg);
+                errorList.push(errorMsg);
             };
             /**
              * 将括号按层级分组成数组
@@ -1228,6 +1228,8 @@ var vm;
         var ks = Object.getOwnPropertyNames(vm.environment);
         for (var _i = 0, ks_1 = ks; _i < ks_1.length; _i++) {
             var k = ks_1[_i];
+            if (k == "__ob__")
+                continue;
             vm.def(obj, k, vm.environment[k]);
         }
         return obj;
