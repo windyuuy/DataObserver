@@ -97,7 +97,7 @@ var vm;
             //实现基础方法，用于表达式中方便得调用
             vm.implementEnvironment(this);
         }
-        Host.prototype.$watch = function (expOrFn, cb, loseValue) {
+        Host.prototype.$watch = function (expOrFn, cb, loseValue, sync) {
             if (this.$isDestroyed) {
                 console.error("the host is destroyed", this);
                 return;
@@ -105,7 +105,7 @@ var vm;
             if (!(this.__ob__ instanceof vm.Observer)) {
                 vm.observe(this);
             }
-            var watcher = new vm.Watcher(this, expOrFn, cb, { loseValue: loseValue });
+            var watcher = new vm.Watcher(this, expOrFn, cb, { loseValue: loseValue, sync: sync });
             this.$watchers.push(watcher);
             return watcher;
         };
