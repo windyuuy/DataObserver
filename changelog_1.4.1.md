@@ -1,1 +1,0 @@
-[fixbug] 修复 implementEnvironment 会将__ob__也赋值的bug
