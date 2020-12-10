@@ -702,6 +702,7 @@ namespace vm {
                 if (ast.operator == NodeType["."] || ast.operator == NodeType["["]) {
                     let a: any = this.run(environment, ast.left)
                     if (a == null) {
+                        console.error(Interpreter.toStringAST(ast) + "\n" + "属性访问异常" + Interpreter.toStringAST(ast.left));
                         return null;//访问运算遇到null则不执行
                     }
                     if (ast.right instanceof ValueASTNode) {
@@ -766,6 +767,7 @@ namespace vm {
                 } else if (ast.left instanceof BinaryASTNode) {
                     self = this.run(environment, ast.left.left);
                     if (self == null) {
+                        console.error(Interpreter.toStringAST(ast) + "\n" + "函数无法访问" + Interpreter.toStringAST(ast.left.left));
                         return null;//self无法获取
                     }
                     if (ast.left.right instanceof ValueASTNode) {
@@ -775,11 +777,13 @@ namespace vm {
                     }
                 }
                 if (func == null) {
+                    console.error(Interpreter.toStringAST(ast) + "\n" + "函数无法访问");
                     return null;//func无法获取
                 }
 
                 if (obj == null) {
                     //函数无法执行
+                    console.error(Interpreter.toStringAST(ast) + "\n" + "函数无法执行" + Interpreter.toStringAST(ast.left));
                     return null;
                 }
                 let paramList = ast.parameters.map(p => {

@@ -1,6 +1,6 @@
 {
 	"name": "dataobserver",
-	"version": "1.4.3",
+	"version": "1.4.4",
 	"files": [
 		"data-observer.js",
 		"data-observer.d.ts"

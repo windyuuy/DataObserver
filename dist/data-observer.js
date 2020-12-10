@@ -1090,6 +1090,7 @@ var vm;
                 if (ast.operator == NodeType["."] || ast.operator == NodeType["["]) {
                     var a_1 = this.run(environment, ast.left);
                     if (a_1 == null) {
+                        console.error(Interpreter.toStringAST(ast) + "\n" + "属性访问异常" + Interpreter.toStringAST(ast.left));
                         return null; //访问运算遇到null则不执行
                     }
                     if (ast.right instanceof ValueASTNode) {
@@ -1156,6 +1157,7 @@ var vm;
                 else if (ast.left instanceof BinaryASTNode) {
                     self_1 = this.run(environment, ast.left.left);
                     if (self_1 == null) {
+                        console.error(Interpreter.toStringAST(ast) + "\n" + "函数无法访问" + Interpreter.toStringAST(ast.left.left));
                         return null; //self无法获取
                     }
                     if (ast.left.right instanceof ValueASTNode) {
@@ -1166,10 +1168,12 @@ var vm;
                     }
                 }
                 if (func == null) {
+                    console.error(Interpreter.toStringAST(ast) + "\n" + "函数无法访问");
                     return null; //func无法获取
                 }
                 if (obj == null) {
                     //函数无法执行
+                    console.error(Interpreter.toStringAST(ast) + "\n" + "函数无法执行" + Interpreter.toStringAST(ast.left));
                     return null;
                 }
                 var paramList = ast.parameters.map(function (p) {
