@@ -1100,9 +1100,24 @@ var vm;
                         return a_1[this.run(environment, ast.right)];
                     }
                 }
+                if (ast.operator == NodeType["&&"]) {
+                    //先左，后右
+                    var a_2 = this.run(environment, ast.left);
+                    if (!a_2) {
+                        return a_2;
+                    }
+                    return a_2 && this.run(environment, ast.right);
+                }
+                else if (ast.operator == NodeType["||"]) {
+                    var a_3 = this.run(environment, ast.left);
+                    if (a_3) {
+                        return a_3;
+                    }
+                    return a_3 || this.run(environment, ast.right);
+                }
                 var a = this.run(environment, ast.left);
                 var b = this.run(environment, ast.right);
-                if (!(ast.operator == NodeType["&&"] || ast.operator == NodeType["||"] || ast.operator == NodeType["=="] || ast.operator == NodeType["!="])) {
+                if (!(ast.operator == NodeType["=="] || ast.operator == NodeType["!="])) {
                     if (a == null && b == null) {
                         return null;
                     }
@@ -1138,10 +1153,6 @@ var vm;
                         return a != b;
                     case NodeType["=="]:
                         return a == b;
-                    case NodeType["&&"]:
-                        return a && b;
-                    case NodeType["||"]:
-                        return a || b;
                     default:
                         throw "\u610F\u5916\u7684\u4E8C\u5143\u8FD0\u7B97\u7B26" + NodeType[ast.operator] + "}]";
                 }

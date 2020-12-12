@@ -582,3 +582,26 @@ test("表达式运行测试", () => {
     expect(exp.run(evn5)).toBe(false)
 
 })
+
+test("测试 && || 的执行顺序", () => {
+
+    var exp = new vm.Interpreter("a && a.b && a.b.c || 6")
+    expect(exp.run({})).toBe(6);
+
+    var exp = new vm.Interpreter("a && a.b && a.b.c || 6")
+    expect(exp.run({ a: {} })).toBe(6);
+
+    var exp = new vm.Interpreter("a && a.b && a.b.c || 6")
+    expect(exp.run({ a: { b: {} } })).toBe(6);
+
+    var exp = new vm.Interpreter("a && a.b && a.b.c || 6")
+    expect(exp.run({ a: { b: { c: 7 } } })).toBe(7);
+
+    var exp = new vm.Interpreter("a && a.b && a.b.c || d")
+    expect(exp.run({ a: { b: { c: 7 } } })).toBe(7);
+
+    var exp = new vm.Interpreter("a && a.b && a.b.c || d.e.f.x.s")
+    expect(exp.run({ a: { b: { c: 7 } } })).toBe(7);
+
+
+})

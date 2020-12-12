@@ -711,10 +711,25 @@ namespace vm {
                         return a[this.run(environment, ast.right)];
                     }
                 }
+
+                if (ast.operator == NodeType["&&"]) {
+                    //先左，后右
+                    let a = this.run(environment, ast.left)
+                    if (!a) {
+                        return a
+                    }
+                    return a && this.run(environment, ast.right)
+                } else if (ast.operator == NodeType["||"]) {
+                    let a = this.run(environment, ast.left)
+                    if (a) {
+                        return a;
+                    }
+                    return a || this.run(environment, ast.right)
+                }
                 let a = this.run(environment, ast.left)
                 let b = this.run(environment, ast.right)
 
-                if (!(ast.operator == NodeType["&&"] || ast.operator == NodeType["||"] || ast.operator == NodeType["=="] || ast.operator == NodeType["!="])) {
+                if (!(ast.operator == NodeType["=="] || ast.operator == NodeType["!="])) {
                     if (a == null && b == null) {
                         return null;
                     } else if (a == null && b != null) {
@@ -748,10 +763,6 @@ namespace vm {
                         return a != b
                     case NodeType["=="]:
                         return a == b
-                    case NodeType["&&"]:
-                        return a && b
-                    case NodeType["||"]:
-                        return a || b
                     default:
                         throw `意外的二元运算符${NodeType[ast.operator]}}]`
                 }
