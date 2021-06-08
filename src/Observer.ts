@@ -116,7 +116,22 @@ namespace vm {
         })
     }
 
-
+    /**
+     * 拦截对象所有的key和value
+     */
+    export function defineCompute(
+        obj: any,
+        key: string,
+        compute: () => any
+    ) {
+        Object.defineProperty(obj, key, {
+            enumerable: true,
+            configurable: true,
+            get: function reactiveGetter() {
+                return compute()
+            },
+        })
+    }
     export class Observer {
         value: any;
         dep: Dep;

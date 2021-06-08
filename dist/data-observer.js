@@ -82,6 +82,8 @@ var __extends = (this && this.__extends) || (function () {
         return extendStatics(d, b);
     };
     return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
         extendStatics(d, b);
         function __() { this.constructor = d; }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
@@ -1358,6 +1360,19 @@ var vm;
         });
     }
     vm.defineReactive = defineReactive;
+    /**
+     * 拦截对象所有的key和value
+     */
+    function defineCompute(obj, key, compute) {
+        Object.defineProperty(obj, key, {
+            enumerable: true,
+            configurable: true,
+            get: function reactiveGetter() {
+                return compute();
+            },
+        });
+    }
+    vm.defineCompute = defineCompute;
     var Observer = /** @class */ (function () {
         function Observer(value) {
             this.value = value;

@@ -318,6 +318,10 @@ declare namespace vm {
      * 对象的默认值，也就是 obj[key]
      */
     val: any): void;
+    /**
+     * 拦截对象所有的key和value
+     */
+    function defineCompute(obj: any, key: string, compute: () => any): void;
     class Observer {
         value: any;
         dep: Dep;

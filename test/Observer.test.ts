@@ -32,3 +32,16 @@ test("Observer", () => {
 
     //细节逻辑结合watch测试
 });
+
+
+test("defineCompute", () => {
+    var obj: any = { a: 1, b: 2 }
+    var ob = vm.observe(obj)
+
+    vm.defineCompute(obj, 'a', () => {
+        return 10;
+    })
+    expect(obj.a).toBe(10);
+
+    //细节逻辑结合watch测试
+});
