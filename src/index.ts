@@ -1,2 +1,3 @@
-namespace vm { }
-window["vm"] = vm;
+namespace vm {
+	window["vm"] = vm;
+}
