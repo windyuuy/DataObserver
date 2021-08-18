@@ -1586,4 +1586,7 @@ var vm;
     }());
     vm.Watcher = Watcher;
 })(vm || (vm = {}));
-window["vm"] = vm;
+var vm;
+(function (vm) {
+    window["vm"] = vm;
+})(vm || (vm = {}));

@@ -421,4 +421,5 @@ declare namespace vm {
         teardown(): void;
     }
 }
-declare namespace vm { }
+declare namespace vm {
+}
