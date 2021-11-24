@@ -683,7 +683,11 @@ namespace vm {
 
             if (ast instanceof ValueASTNode) {
                 if (ast.operator == vm.NodeType.word) {
-                    return environment[ast.value.value];
+                    if (ast.value.value == "this") {
+                        return environment
+                    } else {
+                        return environment[ast.value.value];
+                    }
                 } else {
                     return ast.value.value;
                 }

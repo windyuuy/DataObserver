@@ -23,9 +23,9 @@ test("简单数值绑定", () => {
     vm.Tick.next();
     expect(view.testString).toEqual("哈哈哈")
 
-
-    var host = new Host()
-
+    host.tstNumber = 22
+    vm.Tick.next();
+    expect(view.tstNumber).toEqual(22)
 
 })
 
@@ -198,6 +198,84 @@ test("深层数组", () => {
 
 
 })
+
+test("this解释", () => {
+    class Host extends vm.Host {
+        testString: string = "a"
+        tstNumber: number = 1
+        testObj = {
+            num1: 2,
+        }
+        testArr = [
+            1,
+            2,
+        ]
+    }
+
+    var view = {
+        testString: "",
+        tstNumber: 0,
+        testObj_num1: 0,
+        testArr_1: 0,
+    }
+
+    var host = new Host()
+    host.$watch("this.testString", (newVal, oldVal) => {
+        view.testString = newVal;
+    })
+    host.$watch("this.tstNumber", (newVal, oldVal) => {
+        view.tstNumber = newVal;
+    })
+    host.$watch("this.testObj.num1", (newVal, oldVal) => {
+        view.testObj_num1 = newVal;
+    })
+    host.$watch("this.testArr[1]", (newVal, oldVal) => {
+        view.testArr_1 = newVal;
+    })
+
+    host.testString = "哈哈哈"
+    host.tstNumber = 22
+    host.testObj.num1 = 33
+    // host.testArr[1] = 44
+    vm.set(host.testArr, 1, 44)
+
+    vm.Tick.next();
+
+    expect(view.testString).toEqual("哈哈哈")
+    expect(view.tstNumber).toEqual(22)
+    expect(view.testObj_num1).toEqual(33)
+    expect(view.testArr_1).toEqual(44)
+
+})
+
+// test("this解释Array", () => {
+
+//     var view = [
+//         0,
+//         "",
+//     ]
+
+//     var host0 = [
+//         1,
+//         "1",
+//     ]
+//     var host = vm.implementHost(host0)
+//     host.$watch("this[0]", (newVal, oldVal) => {
+//         view[0] = newVal;
+//     })
+//     host.$watch("this[1]", (newVal, oldVal) => {
+//         view[1] = newVal;
+//     })
+
+//     vm.set(host, 0, 234)
+//     vm.set(host, 1, "235")
+
+//     vm.Tick.next();
+
+//     expect(view[0]).toEqual(234)
+//     expect(view[1]).toEqual("235")
+
+// })
 
 test("watch注解", () => {
 
